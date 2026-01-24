@@ -1,7 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
-const ADMIN_EMAIL = "devkulshrestha27@gmail.com";
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "devkulshrestha27@gmail.com").split(",");
 
 export default async function AdminLayout({
     children,
@@ -10,7 +10,7 @@ export default async function AdminLayout({
 }) {
     const user = await currentUser();
 
-    if (!user || user.emailAddresses[0].emailAddress !== ADMIN_EMAIL) {
+    if (!user || !ADMIN_EMAILS.includes(user.emailAddresses[0].emailAddress)) {
         redirect("/dashboard");
     }
 

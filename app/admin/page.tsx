@@ -25,15 +25,22 @@ export default function AdminPage() {
     const [sortConfig, setSortConfig] = useState<{ key: keyof AdminUser; direction: 'asc' | 'desc' } | null>(null);
     const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
+    const [searchType, setSearchType] = useState<'id' | 'email'>('id');
 
-    useEffect(() => {
-        fetch("/api/admin/users")
+    const fetchUsers = (email?: string) => {
+        setLoading(true);
+        const url = email ? `/api/admin/users?email=${encodeURIComponent(email)}` : "/api/admin/users";
+        fetch(url)
             .then((res) => res.json())
             .then((data) => {
                 if (data.users) setUsers(data.users);
             })
             .catch((err) => console.error(err))
             .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        fetchUsers();
     }, []);
 
     const filteredUsers = users.filter((u) =>
@@ -58,22 +65,22 @@ export default function AdminPage() {
         setSortConfig({ key, direction });
     };
 
-    const handleDowngrade = async (userId: string) => {
-        if (!confirm("Are you sure you want to remove this user's subscription? They will be downgraded to the Free plan immediately.")) return;
+    const handleUpdatePlan = async (userId: string, plan: string) => {
+        if (!confirm(`Are you sure you want to change this user's plan to ${plan}?`)) return;
 
         setActionLoading(true);
         try {
             const res = await fetch("/api/admin/manage-user", {
                 method: "POST",
-                body: JSON.stringify({ userId, action: "downgrade" }),
+                body: JSON.stringify({ userId, action: "update-plan", plan }),
                 headers: { "Content-Type": "application/json" }
             });
 
             if (res.ok) {
                 // Update local state
-                setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, plan: "free" } : u));
-                if (selectedUser) setSelectedUser({ ...selectedUser, plan: "free" });
-                alert("User downgraded to Free plan.");
+                setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, plan } : u));
+                if (selectedUser) setSelectedUser({ ...selectedUser, plan });
+                alert(`User plan updated to ${plan}.`);
             } else {
                 alert("Failed to update user.");
             }
@@ -100,15 +107,38 @@ export default function AdminPage() {
                     <h1 className="text-3xl font-bold mb-2">User Management</h1>
                     <p className="text-slate-400">Overview of all registered users and their usage.</p>
                 </div>
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <input
-                        type="text"
-                        placeholder="Search User ID..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-10 pr-4 py-2 bg-[#121214] border border-white/10 rounded-lg text-sm focus:outline-none focus:border-indigo-500 w-64 text-white"
-                    />
+                <div className="flex gap-2">
+                    <div className="relative group">
+                        <select
+                            value={searchType}
+                            onChange={(e) => setSearchType(e.target.value as 'id' | 'email')}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 bg-transparent text-xs text-slate-500 border-none focus:ring-0 cursor-pointer hover:text-white transition-colors"
+                        >
+                            <option value="id">ID/Name</option>
+                            <option value="email">Email</option>
+                        </select>
+                        <input
+                            type="text"
+                            placeholder={searchType === 'id' ? "Search Name/ID..." : "Search Email..."}
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && searchType === 'email') {
+                                    fetchUsers(search);
+                                }
+                            }}
+                            className="pl-24 pr-10 py-2 bg-[#121214] border border-white/10 rounded-lg text-sm focus:outline-none focus:border-indigo-500 w-80 text-white"
+                        />
+                        {searchType === 'email' && (
+                            <button
+                                onClick={() => fetchUsers(search)}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/5 rounded-md text-slate-500 hover:text-indigo-400 transition-all font-bold text-[10px]"
+                            >
+                                GO
+                            </button>
+                        )}
+                        {searchType === 'id' && <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />}
+                    </div>
                 </div>
             </div>
 
@@ -238,23 +268,24 @@ export default function AdminPage() {
                             </div>
                         </div>
 
-                        {selectedUser.plan !== "free" && (
-                            <div className="px-6 pb-6">
-                                <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 flex items-center justify-between">
-                                    <div>
-                                        <h3 className="text-sm font-bold text-red-400">Manage Subscription</h3>
-                                        <p className="text-xs text-red-500/70 mt-1">Remove Pro/Agency status and revert to Free limits.</p>
-                                    </div>
+                        <div className="px-6 pb-6">
+                            <h3 className="text-xs uppercase font-bold text-slate-500 mb-4">Manage Access</h3>
+                            <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+                                {['free', 'lite', 'plus', 'pro', 'agency'].map((tier) => (
                                     <button
-                                        onClick={() => handleDowngrade(selectedUser.user_id)}
-                                        disabled={actionLoading}
-                                        className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                                        key={tier}
+                                        onClick={() => handleUpdatePlan(selectedUser.user_id, tier)}
+                                        disabled={actionLoading || selectedUser.plan === tier}
+                                        className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${selectedUser.plan === tier
+                                            ? "bg-white/10 border-white/20 text-white cursor-default"
+                                            : "bg-black/40 border-white/5 text-slate-400 hover:border-indigo-500/50 hover:text-white"
+                                            } disabled:opacity-50`}
                                     >
-                                        {actionLoading ? "Processing..." : "Revoke Plan"}
+                                        {tier}
                                     </button>
-                                </div>
+                                ))}
                             </div>
-                        )}
+                        </div>
 
                         <div className="px-6 pb-6 pt-0">
                             <h3 className="text-xs uppercase font-bold text-slate-500 mb-4">Raw Data</h3>
