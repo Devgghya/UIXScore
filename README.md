@@ -27,7 +27,7 @@ Heuristic.ai is a powerful, AI-driven design auditing platform that helps design
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/heuristic-ai.git
+git clone https://github.com/devgghya/heuristic-ai.git
 cd heuristic-ai
 ```
 
