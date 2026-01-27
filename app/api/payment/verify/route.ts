@@ -6,6 +6,7 @@ import { sql } from "@vercel/postgres";
 export const runtime = "nodejs";
 
 const FREE_MAX_TOKENS = 2000;
+const DEV_MAX_TOKENS = 2500; // Test plan
 const LITE_MAX_TOKENS = 2500;
 const PLUS_MAX_TOKENS = 3000;
 const PRO_MAX_TOKENS = 4000;
@@ -33,7 +34,8 @@ export async function POST(req: Request) {
         if (isAuthentic) {
             // Payment Verified - Update User Plan
             let targetTokenLimit = FREE_MAX_TOKENS;
-            if (planId === "plus") targetTokenLimit = PLUS_MAX_TOKENS;
+            if (planId === "dev") targetTokenLimit = DEV_MAX_TOKENS;
+            else if (planId === "plus") targetTokenLimit = PLUS_MAX_TOKENS;
             else if (planId === "pro") targetTokenLimit = PRO_MAX_TOKENS;
             else if (planId === "agency") targetTokenLimit = AGENCY_MAX_TOKENS;
 

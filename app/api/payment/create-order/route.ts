@@ -7,12 +7,14 @@ export const runtime = "nodejs";
 
 
 const PLAN_PRICES_USD = {
+    dev: 100,     // $1.00 (test)
     plus: 500,    // $5.00
     pro: 1900,    // $19.00
     agency: 4900, // $49.00
 };
 
 const PLAN_PRICES_INR = {
+    dev: 2000,     // ₹20.00 (test)
     plus: 49900,   // ₹499.00
     pro: 159900,   // ₹1,599.00
     agency: 399900, // ₹3,999.00

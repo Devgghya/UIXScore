@@ -24,6 +24,21 @@ interface Plan {
 
 const PLANS: Plan[] = [
     {
+        id: "dev",
+        name: "Developer (Test)",
+        price: "$1",
+        priceInr: "₹20",
+        period: "/month",
+        features: [
+            "5 Audits per month",
+            "Test payment gateway",
+            "All core features",
+            "Plan activation test",
+        ],
+        cta: "Test Payment",
+        color: "green",
+    },
+    {
         id: "pro",
         name: "Pro Analyst",
         price: "$6",
