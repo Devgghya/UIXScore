@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 
-const PROTECTED_ROUTES = ['/api/history', '/admin', '/dashboard'];
+const PROTECTED_ROUTES = ['/api/history', '/admin'];
 
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

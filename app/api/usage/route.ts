@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-const FREE_AUDIT_LIMIT = 3;
+const FREE_AUDIT_LIMIT = 3; // Free-tier logged-in user limit
+const GUEST_AUDIT_LIMIT = 1; // Guest limit
 const LITE_AUDIT_LIMIT = 5;
 const PLUS_AUDIT_LIMIT = 12;
 const PRO_AUDIT_LIMIT = 60;
@@ -107,7 +108,7 @@ export async function GET() {
     return NextResponse.json({
       plan: "guest",
       audits_used: 0,
-      limit: FREE_AUDIT_LIMIT,
+      limit: GUEST_AUDIT_LIMIT,
       token_limit: FREE_MAX_TOKENS,
     });
   }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2, Search, Shield, Zap, User, ArrowUpDown, Rocket, Coffee, UserPlus, Lock, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+
 interface AdminUser {
     user_id: string;
     plan: string;
@@ -15,9 +16,19 @@ interface AdminUser {
     last_name: string;
     email: string;
     image_url: string;
+    last_ip?: string;
     role?: 'user' | 'admin' | 'super_admin';
     permissions?: string[];
     plan_expires_at?: string;
+}
+
+interface AuditRecord {
+    id: string;
+    ui_title: string;
+    created_at: string;
+    score: number;
+    framework: string;
+    image_url: string;
 }
 
 export default function AdminPage() {
@@ -26,6 +37,8 @@ export default function AdminPage() {
     const [search, setSearch] = useState("");
     const [sortConfig, setSortConfig] = useState<{ key: keyof AdminUser; direction: 'asc' | 'desc' } | null>(null);
     const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+    const [userAudits, setUserAudits] = useState<AuditRecord[]>([]);
+    const [auditsLoading, setAuditsLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
     const [searchType, setSearchType] = useState<'id' | 'email'>('id');
     const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
@@ -49,8 +62,25 @@ export default function AdminPage() {
             } else {
                 setExpiryDate("");
             }
+
+            // FETCH AUDITS
+            fetchUserAudits(selectedUser.user_id);
         }
     }, [selectedUser]);
+
+    const fetchUserAudits = async (userId: string) => {
+        setAuditsLoading(true);
+        try {
+            const res = await fetch(`/api/admin/audits?userId=${userId}`);
+            const data = await res.json();
+            if (data.audits) setUserAudits(data.audits);
+            else setUserAudits([]);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setAuditsLoading(false);
+        }
+    };
 
     const fetchUsers = (email?: string) => {
         setLoading(true);
@@ -343,6 +373,7 @@ export default function AdminPage() {
                             <th className="px-6 py-4 font-bold cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('plan')}>Plan</th>
                             <th className="px-6 py-4 font-bold cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('audits_used')}>Monthly Usage</th>
                             <th className="px-6 py-4 font-bold cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('total_scans')}>Lifetime Scans</th>
+                            <th className="px-6 py-4 font-bold cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('last_ip')}>Last IP</th>
                             <th className="px-6 py-4 font-bold text-right cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('last_active')}>Last Active</th>
                         </tr>
                     </thead>
@@ -416,6 +447,9 @@ export default function AdminPage() {
                                         {user.total_scans}
                                     </div>
                                 </td>
+                                <td className="px-6 py-4 font-mono text-xs text-muted-text">
+                                    {user.last_ip || "Unknown"}
+                                </td>
                                 <td className="px-6 py-4 text-right text-sm text-muted-text font-mono">
                                     {user.last_active ? new Date(user.last_active).toLocaleDateString() : "-"}
                                 </td>
@@ -434,8 +468,8 @@ export default function AdminPage() {
             {
                 selectedUser && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setSelectedUser(null)}>
-                        <div className="bg-card border border-border-dim rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-                            <div className="p-6 border-b border-border-dim flex justify-between items-start bg-background/50">
+                        <div className="bg-card border border-border-dim rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                            <div className="p-6 border-b border-border-dim flex justify-between items-start bg-background/50 sticky top-0 backdrop-blur-md z-10">
                                 <div className="flex gap-4">
                                     <div className="w-16 h-16 rounded-full bg-background overflow-hidden border-2 border-border-dim relative">
                                         {selectedUser.image_url ? <img src={selectedUser.image_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center bg-accent-primary/10 text-accent-primary"><User className="w-8 h-8" /></div>}
@@ -443,111 +477,156 @@ export default function AdminPage() {
                                     <div>
                                         <h2 className="text-2xl font-bold text-foreground">{selectedUser.first_name} {selectedUser.last_name}</h2>
                                         <p className="text-muted-text">{selectedUser.email}</p>
-                                        <span className="inline-block mt-2 px-2 py-0.5 bg-foreground/10 rounded text-xs font-mono text-muted-text">{selectedUser.user_id}</span>
+                                        <div className="flex gap-2 mt-2">
+                                            <span className="inline-block px-2 py-0.5 bg-foreground/10 rounded text-xs font-mono text-muted-text">{selectedUser.user_id}</span>
+                                            <span className="inline-block px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded text-xs font-mono border border-blue-500/20" title="Last Known IP">{selectedUser.last_ip || "IP Unknown"}</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <button onClick={() => setSelectedUser(null)} className="text-muted-text hover:text-foreground">✕</button>
                             </div>
-                            <div className="p-6 grid grid-cols-2 gap-6 bg-card">
-                                <div className="bg-foreground/5 p-4 rounded-xl border border-border-dim">
-                                    <h3 className="text-xs uppercase font-bold text-muted-text mb-2">Usage Plan</h3>
-                                    <div className="text-xl font-bold capitalize text-foreground">{selectedUser.plan === 'agency' ? 'Design Studio' : selectedUser.plan === 'free' ? 'Starter' : selectedUser.plan} Tier</div>
-                                    <div className="text-sm text-muted-text mt-1">Audit Limit: {selectedUser.plan === 'free' ? '3' : selectedUser.plan === 'pro' ? '60' : 'Unlimited'}</div>
-                                    {selectedUser.plan !== 'free' && (
-                                        <div className="mt-4 pt-4 border-t border-border-dim">
-                                            <label className="text-[10px] uppercase font-bold text-muted-text block mb-1">Expires At</label>
-                                            <div className="flex gap-2">
-                                                <input
-                                                    type="datetime-local"
-                                                    className="bg-background border border-border-dim rounded px-2 py-1 text-xs text-foreground w-full focus:outline-none focus:border-accent-primary transition-colors"
-                                                    value={expiryDate}
-                                                    onChange={(e) => setExpiryDate(e.target.value)}
-                                                />
-                                                <button
-                                                    onClick={() => handleUpdateExpiry(selectedUser.user_id, new Date(expiryDate).toISOString())}
-                                                    className="bg-accent-primary hover:bg-accent-primary/90 text-white text-xs px-3 py-1 rounded font-bold transition-colors"
-                                                    disabled={actionLoading}
-                                                >
-                                                    Set
-                                                </button>
+
+                            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-card">
+
+                                {/* Plan & Stats */}
+                                <div className="space-y-6">
+                                    <div className="bg-foreground/5 p-4 rounded-xl border border-border-dim">
+                                        <h3 className="text-xs uppercase font-bold text-muted-text mb-2">Usage Plan</h3>
+                                        <div className="text-xl font-bold capitalize text-foreground">{selectedUser.plan === 'agency' ? 'Design Studio' : selectedUser.plan === 'free' ? 'Starter' : selectedUser.plan} Tier</div>
+                                        <div className="text-sm text-muted-text mt-1">Audit Limit: {selectedUser.plan === 'free' ? '3' : selectedUser.plan === 'pro' ? '60' : 'Unlimited'}</div>
+                                        {selectedUser.plan !== 'free' && (
+                                            <div className="mt-4 pt-4 border-t border-border-dim">
+                                                <label className="text-[10px] uppercase font-bold text-muted-text block mb-1">Expires At</label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="datetime-local"
+                                                        className="bg-background border border-border-dim rounded px-2 py-1 text-xs text-foreground w-full focus:outline-none focus:border-accent-primary transition-colors"
+                                                        value={expiryDate}
+                                                        onChange={(e) => setExpiryDate(e.target.value)}
+                                                    />
+                                                    <button
+                                                        onClick={() => handleUpdateExpiry(selectedUser.user_id, new Date(expiryDate).toISOString())}
+                                                        className="bg-accent-primary hover:bg-accent-primary/90 text-white text-xs px-3 py-1 rounded font-bold transition-colors"
+                                                        disabled={actionLoading}
+                                                    >
+                                                        Set
+                                                    </button>
+                                                </div>
                                             </div>
+                                        )}
+                                    </div>
+
+                                    <div className="bg-foreground/5 p-4 rounded-xl border border-border-dim">
+                                        <h3 className="text-xs uppercase font-bold text-muted-text mb-2">Activity</h3>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-muted-text text-sm">Monthly Audits</span>
+                                            <span className="text-foreground font-bold">{selectedUser.audits_used}</span>
                                         </div>
-                                    )}
-                                </div>
-                                <div className="bg-foreground/5 p-4 rounded-xl border border-border-dim">
-                                    <h3 className="text-xs uppercase font-bold text-muted-text mb-2">Activity</h3>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-muted-text text-sm">Monthly Audits</span>
-                                        <span className="text-foreground font-bold">{selectedUser.audits_used}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-muted-text text-sm">Total Lifetime</span>
-                                        <span className="text-amber-500 font-bold">{selectedUser.total_scans}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="px-6 pb-6">
-                                <h3 className="text-xs uppercase font-bold text-muted-text mb-4">Manage Access</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                    {['free', 'pro', 'design', 'enterprise'].map((tier) => (
-                                        <button
-                                            key={tier}
-                                            onClick={() => handleUpdatePlan(selectedUser.user_id, tier)}
-                                            disabled={actionLoading || selectedUser.plan === tier}
-                                            className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${selectedUser.plan === tier
-                                                ? "bg-accent-primary border-accent-primary text-white cursor-default shadow-lg shadow-accent-primary/25"
-                                                : "bg-background border-border-dim text-muted-text hover:border-accent-primary/50 hover:text-foreground"
-                                                } disabled:opacity-50`}
-                                        >
-                                            {tier === 'free' ? 'Starter' : tier === 'design' ? 'Design Studio' : tier.replace('_', ' ')}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="px-6 pb-6 pt-0 border-t border-border-dim mt-6 pt-6">
-                                <h3 className="text-xs uppercase font-bold text-muted-text mb-4">Access Management (RBAC)</h3>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-xs text-muted-text block mb-2">Role</label>
-                                        <select
-                                            value={selectedUser.role || 'user'}
-                                            onChange={(e) => handleUpdateAccess(e.target.value, selectedUser.permissions || [])}
-                                            disabled={actionLoading}
-                                            className="w-full bg-background border border-border-dim rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-accent-primary"
-                                        >
-                                            <option value="user">User</option>
-                                            <option value="admin">Admin</option>
-                                            <option value="super_admin">Super Admin</option>
-                                        </select>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-muted-text text-sm">Total Lifetime</span>
+                                            <span className="text-amber-500 font-bold">{selectedUser.total_scans}</span>
+                                        </div>
                                     </div>
 
-                                    {(selectedUser.role === 'admin' || selectedUser.role === 'super_admin') && (
-                                        <div>
-                                            <label className="text-xs text-muted-text block mb-2">Permissions</label>
+                                    <div className="bg-foreground/5 p-4 rounded-xl border border-border-dim">
+                                        <h3 className="text-xs uppercase font-bold text-muted-text mb-4">Manage Access</h3>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {['free', 'pro', 'design', 'enterprise'].map((tier) => (
+                                                <button
+                                                    key={tier}
+                                                    onClick={() => handleUpdatePlan(selectedUser.user_id, tier)}
+                                                    disabled={actionLoading || selectedUser.plan === tier}
+                                                    className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${selectedUser.plan === tier
+                                                        ? "bg-accent-primary border-accent-primary text-white cursor-default shadow-lg shadow-accent-primary/25"
+                                                        : "bg-background border-border-dim text-muted-text hover:border-accent-primary/50 hover:text-foreground"
+                                                        } disabled:opacity-50`}
+                                                >
+                                                    {tier === 'free' ? 'Starter' : tier === 'design' ? 'Design Studio' : tier.replace('_', ' ')}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Audit History & RBAC */}
+                                <div className="space-y-6">
+                                    <div className="bg-foreground/5 p-4 rounded-xl border border-border-dim h-full max-h-[400px] overflow-y-auto">
+                                        <h3 className="text-xs uppercase font-bold text-muted-text mb-4 sticky top-0 bg-transparent flex justify-between items-center">
+                                            <span>Recent Audits</span>
+                                            {auditsLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+                                        </h3>
+
+                                        {userAudits.length === 0 && !auditsLoading ? (
+                                            <p className="text-sm text-muted-text italic">No audits found for this user.</p>
+                                        ) : (
                                             <div className="space-y-2">
-                                                {['manage_users', 'delete_users', 'manage_admins'].map(perm => (
-                                                    <label key={perm} className="flex items-center gap-2 cursor-pointer group">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedUser.permissions?.includes(perm) || false}
-                                                            onChange={(e) => {
-                                                                const current = selectedUser.permissions || [];
-                                                                const next = e.target.checked
-                                                                    ? [...current, perm]
-                                                                    : current.filter(p => p !== perm);
-                                                                handleUpdateAccess(selectedUser.role || 'admin', next);
-                                                            }}
-                                                            disabled={actionLoading || selectedUser.role === 'super_admin'} // Super admin has all implied
-                                                            className="rounded border-border-dim bg-background text-accent-primary focus:ring-0"
-                                                        />
-                                                        <span className="text-sm text-muted-text group-hover:text-foreground transition-colors capitalize">{perm.replace('_', ' ')}</span>
-                                                    </label>
+                                                {userAudits.map((audit) => (
+                                                    <div key={audit.id} className="flex gap-3 items-center p-2 rounded-lg hover:bg-white/5 border border-transparent hover:border-border-dim transition-all group">
+                                                        <div className="w-10 h-10 rounded bg-black/20 overflow-hidden flex-shrink-0">
+                                                            {audit.image_url && <img src={audit.image_url} className="w-full h-full object-cover" />}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex justify-between items-center">
+                                                                <h4 className="text-sm font-bold text-foreground truncate">{audit.ui_title || "Untitled"}</h4>
+                                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${audit.score >= 80 ? 'bg-green-500/10 text-green-400' :
+                                                                        audit.score >= 60 ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'
+                                                                    }`}>{audit.score}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center text-[10px] text-muted-text mt-0.5">
+                                                                <span>{new Date(audit.created_at).toLocaleDateString()}</span>
+                                                                <span className="capitalize">{audit.framework}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 ))}
                                             </div>
+                                        )}
+                                    </div>
+
+                                    <div className="bg-foreground/5 p-4 rounded-xl border border-border-dim">
+                                        <h3 className="text-xs uppercase font-bold text-muted-text mb-4">RBAC</h3>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            <div>
+                                                <label className="text-xs text-muted-text block mb-2">Role</label>
+                                                <select
+                                                    value={selectedUser.role || 'user'}
+                                                    onChange={(e) => handleUpdateAccess(e.target.value, selectedUser.permissions || [])}
+                                                    disabled={actionLoading}
+                                                    className="w-full bg-background border border-border-dim rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-accent-primary"
+                                                >
+                                                    <option value="user">User</option>
+                                                    <option value="admin">Admin</option>
+                                                    <option value="super_admin">Super Admin</option>
+                                                </select>
+                                            </div>
+
+                                            {(selectedUser.role === 'admin' || selectedUser.role === 'super_admin') && (
+                                                <div>
+                                                    <label className="text-xs text-muted-text block mb-2">Permissions</label>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {['manage_users', 'delete_users', 'manage_admins'].map(perm => (
+                                                            <label key={perm} className="flex items-center gap-2 cursor-pointer group bg-background/50 px-2 py-1 rounded border border-border-dim hover:border-accent-primary/50 transition-colors">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedUser.permissions?.includes(perm) || false}
+                                                                    onChange={(e) => {
+                                                                        const current = selectedUser.permissions || [];
+                                                                        const next = e.target.checked
+                                                                            ? [...current, perm]
+                                                                            : current.filter(p => p !== perm);
+                                                                        handleUpdateAccess(selectedUser.role || 'admin', next);
+                                                                    }}
+                                                                    disabled={actionLoading || selectedUser.role === 'super_admin'}
+                                                                    className="rounded border-border-dim bg-background text-accent-primary focus:ring-0"
+                                                                />
+                                                                <span className="text-[10px] font-bold text-muted-text group-hover:text-foreground transition-colors capitalize">{perm.replace('_', ' ')}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
 

@@ -41,7 +41,22 @@ export async function GET() {
       );
     `;
 
-    return NextResponse.json({ message: "Tables created successfully" });
+    // --- MIGRATIONS (Idempotent) ---
+    try {
+      // 1. Add IP Address to Audits
+      await sql`ALTER TABLE audits ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45)`;
+
+      // 2. Make user_id NULLABLE in audits (for Guest mode)
+      await sql`ALTER TABLE audits ALTER COLUMN user_id DROP NOT NULL`;
+
+      // 3. Add last_ip to users
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip VARCHAR(45)`;
+
+    } catch (migErr) {
+      console.log("Migration notice (safe to ignore if columns exist):", migErr);
+    }
+
+    return NextResponse.json({ message: "Tables created/updated successfully" });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }

@@ -3,6 +3,7 @@ import { put } from "@vercel/blob";
 import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
 import { getSession } from "../../../lib/auth";
+import { headers } from "next/headers";
 
 // Ensure Node.js runtime for Buffer and database libraries
 export const runtime = "nodejs";
@@ -73,20 +74,49 @@ export async function POST(req) {
     const userId = session?.id;
     const periodKey = currentPeriodKey();
 
-    // Determine plan and remaining usage
-    let usage = { plan: "guest", auditsUsed: 0, tokenLimit: FREE_MAX_TOKENS };
-    if (userId) {
-      usage = await getUsageForUser(userId);
-    } else {
-      usage = { plan: "guest", auditsUsed: 0, tokenLimit: FREE_MAX_TOKENS };
-    }
+    // --- 0. IP TRACKING ---
+    const headersList = await headers();
+    const forwardedFor = headersList.get("x-forwarded-for");
+    const ip = forwardedFor ? forwardedFor.split(",")[0] : "unknown";
 
-    const limit = ["pro", "design", "enterprise", "agency"].includes(usage.plan) ? Infinity : (userId ? FREE_AUDIT_LIMIT : GUEST_AUDIT_LIMIT);
-    if (usage.auditsUsed >= limit) {
-      return NextResponse.json(
-        { error: userId ? "Free plan limit reached. Upgrade to continue." : "Guest limit reached. Sign up for more.", error_code: "PLAN_LIMIT", plan: usage.plan, limit: limit, audits_used: usage.auditsUsed },
-        { status: 402 }
-      );
+    // --- DETERMINING LIMITS ---
+    let usage = { plan: "guest", auditsUsed: 0, tokenLimit: FREE_MAX_TOKENS };
+
+    if (userId) {
+      // LOGGED IN USER
+      usage = await getUsageForUser(userId);
+      const limit = ["pro", "design", "enterprise", "agency"].includes(usage.plan) ? Infinity : FREE_AUDIT_LIMIT;
+
+      if (usage.auditsUsed >= limit) {
+        return NextResponse.json(
+          { error: "Free plan limit reached. Upgrade to continue.", error_code: "PLAN_LIMIT", plan: usage.plan, limit, audits_used: usage.auditsUsed },
+          { status: 402 }
+        );
+      }
+
+      // Update User IP
+      try {
+        await sql`UPDATE users SET last_ip = ${ip} WHERE id = ${userId}`;
+      } catch (e) { console.error("Failed to update user IP", e); }
+
+    } else {
+      // GUEST USER
+      // Check IP usage in audits table (where user_id is NULL)
+      const { rows: guestRows } = await sql`
+        SELECT COUNT(*) as count 
+        FROM audits 
+        WHERE ip_address = ${ip} AND user_id IS NULL
+      `;
+      const guestUsed = parseInt(guestRows[0].count || "0");
+
+      if (guestUsed >= GUEST_AUDIT_LIMIT) {
+        return NextResponse.json(
+          { error: "Guest limit reached. Sign up for more.", error_code: "PLAN_LIMIT", plan: "guest", limit: GUEST_AUDIT_LIMIT, audits_used: guestUsed },
+          { status: 402 }
+        );
+      }
+
+      usage = { plan: "guest", auditsUsed: guestUsed, tokenLimit: FREE_MAX_TOKENS };
     }
 
     const formData = await req.formData();
@@ -221,12 +251,18 @@ export async function POST(req) {
         const mt = fileObj.type;
 
         let blobUrl = "";
-        if (userId) {
-          try {
-            const blob = await put(fileObj.name, fileObj, { access: 'public' });
-            blobUrl = blob.url;
-          } catch { }
+        // ALWAYS try to upload blob if possible, or just skip if no user? 
+        // Vercel Blob might require auth depending on config, but usually server-side is fine.
+        // For guest, we might want to skip blob storage if we want to save costs, 
+        // BUT we need a URL for the database 'image_url' column if we want to show it in admin.
+        // Let's allow blob upload for guests too for now to ensure Admin can see it.
+        try {
+          const blob = await put(fileObj.name, fileObj, { access: 'public' });
+          blobUrl = blob.url;
+        } catch (e) {
+          console.error("Blob upload failed (expected if no token configured)", e);
         }
+
         images.push({ base64: b64, mimeType: mt, publicUrl: blobUrl });
       }
       // Use the first image as primary for legacy fields
@@ -380,22 +416,19 @@ export async function POST(req) {
       category: item.category || "General"
     }));
 
-    // GUEST RESTRICTION: Show only 1 issue
+    // GUEST RESTRICTION: Show only 1 issue IF it was a guest (but we are allowing 1 FULL report for guest)
+    // Wait, the requirement says: "a new user can do one audit and get one audit pdf report without sign in"
+    // So we should GIVE THEM THE FULL REPORT for that one allowed audit.
+    // We only restrict IF they try to do MORE than 1.
+    // So I will REMOVE the truncation logic for the allowed guest audit.
+
     let finalAudit = normalizedAudit;
     let isTruncated = false;
     let hiddenIssuesCount = 0;
 
-    if (!userId) {
-      if (normalizedAudit.length > 1) {
-        finalAudit = [normalizedAudit[0]];
-        isTruncated = true;
-        hiddenIssuesCount = normalizedAudit.length - 1;
-      }
-    }
-
-    // 3. Save to Database (ONLY IF LOGGED IN) — save FULL analysis
+    // 3. Save to Database (NOW FOR BOTH USERS AND GUESTS)
     let savedAuditId = null;
-    if (userId && images.length > 0 && parsedData) {
+    if (images.length > 0 && parsedData) {
       try {
         // Build the FULL analysis object to save
         const fullAnalysis = {
@@ -410,15 +443,20 @@ export async function POST(req) {
 
         // Save one record per scan (not per image) for simplicity
         const urlToSave = images[0]?.publicUrl || publicImageUrl || null;
+
+        // Handle NULL userId for Guests
+        // sql template literal handles nulls correctly usually, but we need to be explicit if it's undefined
+        const safeUserId = userId || null;
+
         const dbResult = await sql`
-          INSERT INTO audits (user_id, ui_title, image_url, framework, analysis)
-          VALUES (${userId}, ${fullAnalysis.ui_title}, ${urlToSave}, ${framework}, ${JSON.stringify(fullAnalysis)})
+          INSERT INTO audits (user_id, ui_title, image_url, framework, analysis, ip_address)
+          VALUES (${safeUserId}, ${fullAnalysis.ui_title}, ${urlToSave}, ${framework}, ${JSON.stringify(fullAnalysis)}, ${ip})
           RETURNING id
         `;
         savedAuditId = dbResult.rows[0]?.id;
       } catch (dbError) {
         console.error("DB Save Failed:", dbError);
-        // Don't crash the request if DB fails, just return the analysis
+        // Don't crash
       }
     }
 
@@ -430,8 +468,8 @@ export async function POST(req) {
       audit: finalAudit,
       score: parsedData.score || 0,
       ux_metrics: parsedData.ux_metrics || {},
-      key_strengths: parsedData.key_strengths || [], // FIXED: JSON pass-through
-      key_weaknesses: parsedData.key_weaknesses || [], // FIXED: JSON pass-through
+      key_strengths: parsedData.key_strengths || [],
+      key_weaknesses: parsedData.key_weaknesses || [],
       summary: parsedData.summary || {},
       analysis_grouped: parsedData?.images || null,
       image_url: publicImageUrl || null,
@@ -454,6 +492,7 @@ export async function POST(req) {
         WHERE user_id = ${userId}
       `;
     } else {
+      // Guest usage is tracked via DB counts now, but we can still set cookie for frontend convenience
       const newCount = usage.auditsUsed + 1;
       response.cookies.set("guest_audit_count", newCount.toString(), {
         httpOnly: false,
