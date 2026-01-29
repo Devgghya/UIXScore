@@ -257,48 +257,48 @@ export function PricingPlans({
     };
 
     return (
-        <div className="w-full max-w-5xl mx-auto">
-            <div className="text-center mb-12">
-                <h2 className="text-3xl md:text-5xl font-black text-foreground mb-4 tracking-tight">
+        <div className="w-full max-w-5xl mx-auto px-4 md:px-0">
+            <div className="text-center mb-8 md:mb-12">
+                <h2 className="text-2xl md:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tight">
                     Simple, Transparent Pricing
                 </h2>
-                <p className="text-muted-text text-lg max-w-2xl mx-auto">
+                <p className="text-muted-text text-sm md:text-lg max-w-2xl mx-auto px-4">
                     Choose the perfect plan for your design auditing needs. No hidden fees.
                     {planExpiresAt && (
-                        <span className="block mt-4 text-sm font-bold text-accent-primary bg-accent-primary/5 border border-accent-primary/20 py-2 px-4 rounded-full w-fit mx-auto">
+                        <span className="block mt-4 text-xs md:text-sm font-bold text-accent-primary bg-accent-primary/5 border border-accent-primary/20 py-2 px-4 rounded-full w-fit mx-auto">
                             📅 Your plan renews on {new Date(planExpiresAt).toLocaleDateString()}
                         </span>
                     )}
                 </p>
 
-                <div className="flex flex-col md:flex-row items-center justify-center gap-6 mt-8">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-6 mt-6 md:mt-8">
                     {/* Billing Toggle */}
-                    <div className="flex items-center gap-2 p-1 bg-card border border-border-dim rounded-xl">
+                    <div className="flex items-center gap-1 md:gap-2 p-1 bg-card border border-border-dim rounded-xl w-full sm:w-auto">
                         <button
                             onClick={() => setBillingCycle("monthly")}
-                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${billingCycle === "monthly" ? "bg-accent-primary text-white shadow-md" : "text-muted-text hover:text-foreground"}`}
+                            className={`flex-1 sm:flex-none px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${billingCycle === "monthly" ? "bg-accent-primary text-white shadow-md" : "text-muted-text hover:text-foreground"}`}
                         >
                             Monthly
                         </button>
                         <button
                             onClick={() => setBillingCycle("annual")}
-                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${billingCycle === "annual" ? "bg-accent-primary text-white shadow-md" : "text-muted-text hover:text-foreground"}`}
+                            className={`flex-1 sm:flex-none px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${billingCycle === "annual" ? "bg-accent-primary text-white shadow-md" : "text-muted-text hover:text-foreground"}`}
                         >
-                            Annual <span className="text-[10px] bg-white/20 px-1 rounded ml-1">SAVE 20%</span>
+                            Annual <span className="text-[9px] md:text-[10px] bg-white/20 px-1 rounded ml-1">SAVE 20%</span>
                         </button>
                     </div>
 
                     {/* Currency Toggle */}
-                    <div className="flex items-center gap-2 p-1 bg-card border border-border-dim rounded-xl">
+                    <div className="flex items-center gap-1 md:gap-2 p-1 bg-card border border-border-dim rounded-xl w-full sm:w-auto">
                         <button
                             onClick={() => setRegion("GLOBAL")}
-                            className={`px-3 py-2 rounded-lg text-sm font-bold transition-all ${region === "GLOBAL" ? "bg-foreground text-background shadow-md" : "text-muted-text hover:text-foreground"}`}
+                            className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${region === "GLOBAL" ? "bg-foreground text-background shadow-md" : "text-muted-text hover:text-foreground"}`}
                         >
                             USD ($)
                         </button>
                         <button
                             onClick={() => setRegion("IN")}
-                            className={`px-3 py-2 rounded-lg text-sm font-bold transition-all ${region === "IN" ? "bg-foreground text-background shadow-md" : "text-muted-text hover:text-foreground"}`}
+                            className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${region === "IN" ? "bg-foreground text-background shadow-md" : "text-muted-text hover:text-foreground"}`}
                         >
                             INR (₹)
                         </button>
@@ -306,35 +306,35 @@ export function PricingPlans({
                 </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
 
                 {PLANS.map((plan) => (
                     <div
                         key={plan.id}
-                        className={`relative bg-card border rounded-2xl p-8 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${plan.recommended
-                            ? "border-accent-primary shadow-[0_0_40px_rgba(99,102,241,0.1)] scale-105 z-10"
+                        className={`relative bg-card border rounded-xl md:rounded-2xl p-5 md:p-8 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${plan.recommended
+                            ? "border-accent-primary shadow-[0_0_40px_rgba(99,102,241,0.1)] md:scale-105 z-10"
                             : "border-border-dim shadow-xl"
                             }`}
                     >
                         {plan.recommended && (
-                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest shadow-lg">
+                            <div className="absolute -top-3 md:-top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-3 md:px-4 py-1 rounded-full text-[10px] md:text-xs font-black uppercase tracking-widest shadow-lg">
                                 Most Popular
                             </div>
                         )}
 
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 self-start ${plan.color === "indigo" ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" :
+                        <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center mb-4 md:mb-6 self-start ${plan.color === "indigo" ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" :
                             plan.color === "purple" ? "bg-purple-500/10 text-purple-600 dark:text-purple-400" :
                                 plan.color === "blue" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
                                     "bg-slate-500/10 text-slate-600 dark:text-slate-400"
                             }`}>
-                            {plan.id === "pro" ? <Sparkles className="w-6 h-6" /> :
-                                plan.id === "agency" ? <Shield className="w-6 h-6" /> :
-                                    plan.id === "plus" ? <Rocket className="w-6 h-6" /> :
-                                        <Zap className="w-6 h-6" />}
+                            {plan.id === "pro" ? <Sparkles className="w-5 h-5 md:w-6 md:h-6" /> :
+                                plan.id === "agency" ? <Shield className="w-5 h-5 md:w-6 md:h-6" /> :
+                                    plan.id === "plus" ? <Rocket className="w-5 h-5 md:w-6 md:h-6" /> :
+                                        <Zap className="w-5 h-5 md:w-6 md:h-6" />}
                         </div>
 
-                        <h3 className="text-xl font-bold text-foreground mb-2">{plan.name}</h3>
-                        <div className="flex items-baseline gap-1 mb-6">
+                        <h3 className="text-lg md:text-xl font-bold text-foreground mb-2">{plan.name}</h3>
+                        <div className="flex items-baseline gap-1 mb-4 md:mb-6">
                             <span className="text-4xl font-black text-foreground">
                                 {plan.id === "enterprise" ? "Contact" : region === "IN" ? (
                                     billingCycle === "annual" && plan.id !== "free"

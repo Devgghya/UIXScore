@@ -1,6 +1,6 @@
 import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSession, setSession } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -25,7 +25,24 @@ export async function POST(req: Request) {
             WHERE id = ${session.id}
         `;
 
-        return NextResponse.json({ success: true, message: "Profile updated" });
+        // Update session with new data
+        const updatedUser = {
+            ...session,
+            firstName,
+            lastName,
+            imageUrl: imageUrl || session.imageUrl
+        };
+
+        // Create new JWT token with updated data
+        const { createToken } = await import("@/lib/auth");
+        const newToken = await createToken(updatedUser);
+        await setSession(newToken);
+
+        return NextResponse.json({
+            success: true,
+            message: "Profile updated",
+            user: updatedUser
+        });
     } catch (error) {
         console.error("Update Profile Error:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

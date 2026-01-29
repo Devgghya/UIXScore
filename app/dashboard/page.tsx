@@ -748,16 +748,16 @@ function DashboardContent() {
       </aside>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 overflow-y-auto relative md:ml-72 pb-24 md:pb-0">
-        <div className="max-w-5xl mx-auto px-6 py-12">
+      <main className="flex-1 overflow-y-auto relative md:ml-72 pb-24 md:pb-8">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-12">
 
           {/* --- TAB 1: NEW AUDIT --- */}
           {activeTab === "dashboard" && (
             <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-6 mb-8 md:mb-12">
                 <div>
-                  <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">{isSignedIn ? `Welcome back, ${user.firstName}` : "Design Audit Dashboard"}</h1>
-                  <p className="text-muted-text text-sm md:text-base">Upload your UI to get expert feedback instantly.</p>
+                  <h1 className="text-xl md:text-3xl font-bold text-foreground mb-1 md:mb-2">{isSignedIn ? `Welcome back, ${user.firstName}` : "Design Audit Dashboard"}</h1>
+                  <p className="text-muted-text text-xs md:text-sm">Upload your UI to get expert feedback instantly.</p>
                 </div>
                 {!isPaid && isSignedIn && (
                   <button onClick={() => setActiveTab("pricing")} className="group flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold text-xs rounded-full shadow-lg shadow-orange-500/20 hover:scale-110 hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-300"><Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform duration-300" /> Upgrade to Pro</button>
@@ -765,12 +765,12 @@ function DashboardContent() {
               </div>
 
               {/* TOOL BOX */}
-              <div className="bg-card border border-border-dim rounded-3xl p-8 shadow-2xl relative mb-12 hover:border-accent-primary/20 transition-all duration-300">
+              <div className="bg-card border border-border-dim rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-2xl relative mb-8 md:mb-12 hover:border-accent-primary/20 transition-all duration-300">
 
-                <div className="flex justify-center mb-8">
-                  <div className="bg-foreground/5 p-1.5 rounded-xl flex gap-1 border border-border-dim">
-                    <button onClick={() => setMode("upload")} className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${mode === 'upload' ? 'bg-background text-foreground shadow-md scale-105' : 'text-muted-text hover:text-foreground hover:bg-foreground/5'}`}>Upload Images</button>
-                    <button onClick={() => setMode("url")} className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${mode === 'url' ? 'bg-background text-foreground shadow-md scale-105' : 'text-muted-text hover:text-foreground hover:bg-foreground/5'}`}>Site Crawler</button>
+                <div className="flex justify-center mb-6 md:mb-8">
+                  <div className="bg-foreground/5 p-1 md:p-1.5 rounded-xl flex gap-1 border border-border-dim w-full md:w-auto">
+                    <button onClick={() => setMode("upload")} className={`flex-1 md:flex-none px-4 md:px-6 py-2 rounded-lg text-xs md:text-sm font-bold transition-all duration-300 ${mode === 'upload' ? 'bg-background text-foreground shadow-md scale-105' : 'text-muted-text hover:text-foreground hover:bg-foreground/5'}`}>Upload Images</button>
+                    <button onClick={() => setMode("url")} className={`flex-1 md:flex-none px-4 md:px-6 py-2 rounded-lg text-xs md:text-sm font-bold transition-all duration-300 ${mode === 'url' ? 'bg-background text-foreground shadow-md scale-105' : 'text-muted-text hover:text-foreground hover:bg-foreground/5'}`}>Site Crawler</button>
                   </div>
                 </div>
 

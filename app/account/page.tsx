@@ -57,22 +57,22 @@ export default function AccountPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] p-8 text-white">
+        <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-8 text-white">
             <div className="max-w-2xl mx-auto">
-                <div className="mb-8 flex flex-col gap-4">
+                <div className="mb-6 md:mb-8 flex flex-col gap-3 md:gap-4">
                     <Link
                         href="/dashboard"
-                        className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium w-fit group"
+                        className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-xs md:text-sm font-medium w-fit group"
                     >
                         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                         Back to Dashboard
                     </Link>
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
+                            <h1 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
                                 Account Settings
                             </h1>
-                            <p className="text-slate-400">Manage your profile and preferences.</p>
+                            <p className="text-slate-400 text-sm md:text-base">Manage your profile and preferences.</p>
                         </div>
                     </div>
                 </div>
@@ -80,7 +80,7 @@ export default function AccountPage() {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-[#121214] border border-white/5 rounded-2xl p-8 shadow-xl"
+                    className="bg-[#121214] border border-white/5 rounded-xl md:rounded-2xl p-4 md:p-8 shadow-xl"
                 >
                     <form onSubmit={handleUpdateProfile} className="space-y-6">
                         {/* Avatar Section */}
@@ -104,7 +104,7 @@ export default function AccountPage() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">First Name</label>
                                 <input
@@ -164,11 +164,11 @@ export default function AccountPage() {
                                 <ArrowLeft className="w-4 h-4 rotate-180 text-indigo-400 group-hover:translate-x-1 transition-transform" />
                             </Link>
 
-                            <div className="flex justify-between items-center">
+                            <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
                                 <button
                                     type="button"
                                     onClick={handleLogout}
-                                    className="px-4 py-2 flex items-center gap-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors text-sm font-bold"
+                                    className="px-4 py-2.5 md:py-2 flex items-center justify-center md:justify-start gap-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors text-xs md:text-sm font-bold order-2 md:order-1"
                                 >
                                     <LogOut className="w-4 h-4" />
                                     Sign Out
@@ -177,7 +177,7 @@ export default function AccountPage() {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center gap-2 font-bold transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50"
+                                    className="px-6 py-2.5 md:py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center justify-center gap-2 font-bold transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 order-1 md:order-2 text-sm md:text-base"
                                 >
                                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                     Save Changes
