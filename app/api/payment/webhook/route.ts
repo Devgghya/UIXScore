@@ -9,6 +9,7 @@ const LITE_MAX_TOKENS = 2500;
 const PLUS_MAX_TOKENS = 3000;
 const PRO_MAX_TOKENS = 4000;
 const AGENCY_MAX_TOKENS = 8000;
+const DESIGN_MAX_TOKENS = 8000;
 
 export async function POST(req: Request) {
     try {
@@ -52,9 +53,8 @@ export async function POST(req: Request) {
 
             // Determine limits
             let targetTokenLimit = FREE_MAX_TOKENS;
-            if (plan === "plus") targetTokenLimit = PLUS_MAX_TOKENS;
-            else if (plan === "pro") targetTokenLimit = PRO_MAX_TOKENS;
-            else if (plan === "agency") targetTokenLimit = AGENCY_MAX_TOKENS;
+            if (plan === "pro") targetTokenLimit = PRO_MAX_TOKENS;
+            else if (plan === "design") targetTokenLimit = DESIGN_MAX_TOKENS;
 
             const current = new Date().toISOString().slice(0, 7);
             const expiresAt = new Date();

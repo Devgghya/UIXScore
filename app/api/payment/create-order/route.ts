@@ -7,15 +7,13 @@ export const runtime = "nodejs";
 
 
 const PLAN_PRICES_USD = {
-    plus: 500,    // $5.00
-    pro: 1900,    // $19.00
-    agency: 4900, // $49.00
+    pro: 600,     // $6.00
+    design: 3000, // $30.00
 };
 
 const PLAN_PRICES_INR = {
-    plus: 49900,   // ₹499.00
-    pro: 159900,   // ₹1,599.00
-    agency: 399900, // ₹3,999.00
+    pro: 49900,    // ₹499.00
+    design: 249900, // ₹2,499.00
 };
 
 export async function POST(req: Request) {

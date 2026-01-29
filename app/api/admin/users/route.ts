@@ -15,53 +15,112 @@ export async function GET(req: Request) {
         }
 
         // 1. Fetch Backend Usage and User Data (Joined)
-        let query;
-        if (emailSearch) {
-            query = sql`
-                SELECT 
-                    u.id as user_id,
-                    u.email,
-                    u.first_name,
-                    u.last_name,
-                    u.image_url,
-                    u.role,
-                    u.permissions,
-                    u.last_ip,
-                    uu.plan,
-                    uu.audits_used,
-                    uu.token_limit,
-                    uu.updated_at as last_active,
-                    (SELECT COUNT(*) FROM audits a WHERE a.user_id = u.id::text) as total_scans
-                FROM users u
-                LEFT JOIN user_usage uu ON u.id::text = uu.user_id
-                WHERE u.email ILIKE ${'%' + emailSearch + '%'} AND u.is_verified = TRUE
-                ORDER BY u.created_at DESC
-            `;
-        } else {
-            query = sql`
-                SELECT 
-                    u.id as user_id,
-                    u.email,
-                    u.first_name,
-                    u.last_name,
-                    u.image_url,
-                    u.role,
-                    u.permissions,
-                    u.last_ip,
-                    uu.plan,
-                    uu.audits_used,
-                    uu.token_limit,
-                    uu.updated_at as last_active,
-                    (SELECT COUNT(*) FROM audits a WHERE a.user_id = u.id::text) as total_scans
-                FROM users u
-                LEFT JOIN user_usage uu ON u.id::text = uu.user_id
-                WHERE u.is_verified = TRUE
-                ORDER BY u.created_at DESC
-                LIMIT 100
-            `;
-        }
+        let rows; // Declare rows here to be accessible after the try-catch block
 
-        const { rows } = await query;
+        // Try fetching with last_ip first
+        try {
+            let query;
+            if (emailSearch) {
+                query = sql`
+                    SELECT 
+                        u.id as user_id,
+                        u.email,
+                        u.first_name,
+                        u.last_name,
+                        u.image_url,
+                        u.role,
+                        u.permissions,
+                        u.last_ip,
+                        uu.plan,
+                        uu.audits_used,
+                        uu.token_limit,
+                        uu.updated_at as last_active,
+                        (SELECT COUNT(*) FROM audits a WHERE a.user_id = u.id::text) as total_scans
+                    FROM users u
+                    LEFT JOIN user_usage uu ON u.id::text = uu.user_id
+                    WHERE u.email ILIKE ${'%' + emailSearch + '%'} AND u.is_verified = TRUE
+                    ORDER BY u.created_at DESC
+                `;
+            } else {
+                query = sql`
+                    SELECT 
+                        u.id as user_id,
+                        u.email,
+                        u.first_name,
+                        u.last_name,
+                        u.image_url,
+                        u.role,
+                        u.permissions,
+                        u.last_ip,
+                        uu.plan,
+                        uu.audits_used,
+                        uu.token_limit,
+                        uu.updated_at as last_active,
+                        (SELECT COUNT(*) FROM audits a WHERE a.user_id = u.id::text) as total_scans
+                    FROM users u
+                    LEFT JOIN user_usage uu ON u.id::text = uu.user_id
+                    WHERE u.is_verified = TRUE
+                    ORDER BY u.created_at DESC
+                    LIMIT 100
+                `;
+            }
+            const result = await query;
+            rows = result.rows;
+        } catch (dbError: any) {
+            // Fallback if 'last_ip' column doesn't exist yet
+            if (dbError.message?.includes('column') || dbError.message?.includes('does not exist')) {
+                console.warn("Retrying admin fetch without last_ip column...");
+                let query;
+                if (emailSearch) {
+                    query = sql`
+                        SELECT 
+                            u.id as user_id,
+                            u.email,
+                            u.first_name,
+                            u.last_name,
+                            u.image_url,
+                            u.role,
+                            u.permissions,
+                            -- u.last_ip removed
+                            uu.plan,
+                            uu.audits_used,
+                            uu.token_limit,
+                            uu.updated_at as last_active,
+                            (SELECT COUNT(*) FROM audits a WHERE a.user_id = u.id::text) as total_scans
+                        FROM users u
+                        LEFT JOIN user_usage uu ON u.id::text = uu.user_id
+                        WHERE u.email ILIKE ${'%' + emailSearch + '%'} AND u.is_verified = TRUE
+                        ORDER BY u.created_at DESC
+                    `;
+                } else {
+                    query = sql`
+                        SELECT 
+                            u.id as user_id,
+                            u.email,
+                            u.first_name,
+                            u.last_name,
+                            u.image_url,
+                            u.role,
+                            u.permissions,
+                            -- u.last_ip removed
+                            uu.plan,
+                            uu.audits_used,
+                            uu.token_limit,
+                            uu.updated_at as last_active,
+                            (SELECT COUNT(*) FROM audits a WHERE a.user_id = u.id::text) as total_scans
+                        FROM users u
+                        LEFT JOIN user_usage uu ON u.id::text = uu.user_id
+                        WHERE u.is_verified = TRUE
+                        ORDER BY u.created_at DESC
+                        LIMIT 100
+                    `;
+                }
+                const result = await query;
+                rows = result.rows;
+            } else {
+                throw dbError; // Rethrow other errors
+            }
+        }
 
         const enrichedUsers = rows.map(row => ({
             ...row,

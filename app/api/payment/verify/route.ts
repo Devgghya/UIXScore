@@ -10,6 +10,7 @@ const LITE_MAX_TOKENS = 2500;
 const PLUS_MAX_TOKENS = 3000;
 const PRO_MAX_TOKENS = 4000;
 const AGENCY_MAX_TOKENS = 8000;
+const DESIGN_MAX_TOKENS = 8000;
 
 export async function POST(req: Request) {
     try {
@@ -33,9 +34,8 @@ export async function POST(req: Request) {
         if (isAuthentic) {
             // Payment Verified - Update User Plan
             let targetTokenLimit = FREE_MAX_TOKENS;
-            if (planId === "plus") targetTokenLimit = PLUS_MAX_TOKENS;
-            else if (planId === "pro") targetTokenLimit = PRO_MAX_TOKENS;
-            else if (planId === "agency") targetTokenLimit = AGENCY_MAX_TOKENS;
+            if (planId === "pro") targetTokenLimit = PRO_MAX_TOKENS;
+            else if (planId === "design") targetTokenLimit = DESIGN_MAX_TOKENS;
 
             const current = new Date().toISOString().slice(0, 7);
             const expiresAt = new Date();

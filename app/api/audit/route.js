@@ -14,6 +14,7 @@ const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
 
 const FREE_AUDIT_LIMIT = 3;            // Free-tier logged-in user limit
 const GUEST_AUDIT_LIMIT = 1;           // Guest limit
+const PRO_AUDIT_LIMIT = 60;            // Pro limit
 const FREE_MAX_TOKENS = 2000;          // Token cap per audit for free/guest users
 const PRO_MAX_TOKENS = 4000;           // Token cap per audit for Pro users
 const ULTRA_MAX_TOKENS = 8000;         // Design/Enterprise
@@ -85,7 +86,7 @@ export async function POST(req) {
     if (userId) {
       // LOGGED IN USER
       usage = await getUsageForUser(userId);
-      const limit = ["pro", "design", "enterprise", "agency"].includes(usage.plan) ? Infinity : FREE_AUDIT_LIMIT;
+      const limit = ["design", "enterprise", "agency"].includes(usage.plan) ? Infinity : (usage.plan === "pro" ? PRO_AUDIT_LIMIT : FREE_AUDIT_LIMIT);
 
       if (usage.auditsUsed >= limit) {
         return NextResponse.json(
