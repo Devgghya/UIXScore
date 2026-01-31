@@ -1,21 +1,62 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
-import { Loader2, User, Save, LogOut, ArrowLeft, CreditCard } from "lucide-react";
+import { Loader2, User, Save, LogOut, ArrowLeft, CreditCard, Camera, Upload } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
 export default function AccountPage() {
     const { user, refresh } = useAuth();
     const router = useRouter();
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [firstName, setFirstName] = useState(user?.firstName || "");
     const [lastName, setLastName] = useState(user?.lastName || "");
     const [imageUrl, setImageUrl] = useState(user?.imageUrl || "");
     const [success, setSuccess] = useState("");
     const [error, setError] = useState("");
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+
+            // Basic validation
+            if (file.size > 5 * 1024 * 1024) {
+                setError("Image must be less than 5MB");
+                return;
+            }
+
+            setUploading(true);
+            setError("");
+
+            try {
+                const formData = new FormData();
+                formData.append("file", file);
+
+                const res = await fetch("/api/upload/avatar", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.error || "Upload failed");
+                }
+
+                const blob = await res.json();
+                setImageUrl(blob.url);
+                setSuccess("Image uploaded! Click Save Changes to confirm.");
+            } catch (err: any) {
+                console.error(err);
+                setError(err.message || "Failed to upload image. Please try again.");
+            } finally {
+                setUploading(false);
+            }
+        }
+    };
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -85,22 +126,54 @@ export default function AccountPage() {
                     <form onSubmit={handleUpdateProfile} className="space-y-6">
                         {/* Avatar Section */}
                         <div className="flex items-center gap-6 pb-6 border-b border-white/5">
-                            <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border-2 border-white/10 relative group">
-                                {imageUrl || user?.imageUrl ? (
-                                    <img src={imageUrl || user?.imageUrl} alt="Profile" className="w-full h-full object-cover" />
-                                ) : (
-                                    <User className="w-8 h-8 text-slate-400" />
+                            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                                <div className="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border-2 border-white/10 transition-colors group-hover:border-indigo-500/50">
+                                    {imageUrl || user?.imageUrl ? (
+                                        <img src={imageUrl || user?.imageUrl} alt="Profile" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <User className="w-10 h-10 text-slate-400" />
+                                    )}
+                                </div>
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+                                    <Camera className="w-8 h-8 text-white" />
+                                </div>
+                                {uploading && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-full z-10">
+                                        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                                    </div>
                                 )}
                             </div>
+
                             <div className="flex-1">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Profile Image URL</label>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Profile Photo</label>
+                                <div className="flex flex-wrap gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploading}
+                                        className="px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-300 rounded-lg text-sm font-bold transition-all flex items-center gap-2"
+                                    >
+                                        <Upload className="w-4 h-4" />
+                                        Upload Image
+                                    </button>
+                                    {imageUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setImageUrl("")}
+                                            className="px-4 py-2 text-red-400 hover:bg-red-500/10 rounded-lg text-sm font-medium transition-colors"
+                                        >
+                                            Remove
+                                        </button>
+                                    )}
+                                </div>
                                 <input
-                                    type="text"
-                                    value={imageUrl}
-                                    onChange={(e) => setImageUrl(e.target.value)}
-                                    placeholder="https://example.com/avatar.jpg"
-                                    className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500/50"
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileSelect}
+                                    className="hidden"
+                                    accept="image/png, image/jpeg, image/jpg, image/webp"
                                 />
+                                <p className="text-xs text-slate-500 mt-2">Recommended: Square JPG or PNG, max 5MB.</p>
                             </div>
                         </div>
 

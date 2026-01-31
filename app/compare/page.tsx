@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-provider";
-import { Plus, Trash2, BarChart3, Loader, Download, LayoutDashboard, GitCompare, Home as HomeIcon, Zap, Lightbulb } from "lucide-react";
+import { Plus, Trash2, BarChart3, Loader, Download, LayoutDashboard, GitCompare, Home as HomeIcon, Zap, Lightbulb, Sparkles } from "lucide-react";
 import Link from "next/link";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -486,7 +486,18 @@ export default function ComparePage() {
             </div>
             <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight">Competitor Benchmark</h1>
           </div>
-          <p className="text-muted-text text-base md:text-xl font-medium">Audit your site and competitors side-by-side</p>
+          <p className="text-muted-text text-base md:text-xl font-medium mb-6">Audit your site and competitors side-by-side</p>
+
+          {/* How it works (IA Fix) */}
+          <div className="bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800 rounded-xl p-4 text-sm text-foreground/80">
+            <h3 className="font-bold text-indigo-600 dark:text-indigo-400 mb-2 flex items-center gap-2"><Sparkles className="w-4 h-4" /> How to use this tool:</h3>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Select an evaluation framework (Nielsen's is recommended for general UX).</li>
+              <li>Enter your website URL or upload a screenshot.</li>
+              <li>Add up to 3 competitor URLs to compare performance against.</li>
+              <li>We'll generate a comparative radar chart and strength/weakness analysis.</li>
+            </ul>
+          </div>
         </div>
 
         {/* Framework Selection */}
@@ -541,39 +552,50 @@ export default function ComparePage() {
             <h2 className="text-2xl font-bold text-foreground">Competitors</h2>
             <button
               onClick={addCompetitor}
-              className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:opacity-90 text-white rounded-lg font-bold transition-all text-sm shadow-md shadow-accent-primary/20"
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold transition-all text-sm shadow-lg shadow-indigo-600/20"
             >
               <Plus className="w-4 h-4" />
-              Add
+              Add Competitor
             </button>
           </div>
 
           {competitors.length === 0 ? (
-            <p className="text-muted-text text-center py-8 bg-foreground/[0.02] border border-dashed border-border-dim rounded-xl">No competitors added yet. Click "Add Competitor" to get started.</p>
+            <div className="text-center py-12 bg-foreground/[0.02] border-2 border-dashed border-border-dim rounded-2xl">
+              <GitCompare className="w-12 h-12 text-muted-text mx-auto mb-3 opacity-50" />
+              <p className="text-foreground font-bold text-lg mb-1">No competitors added yet.</p>
+              <p className="text-muted-text text-sm">Click "Add Competitor" above to start comparing.</p>
+            </div>
           ) : (
             <div className="space-y-4">
               {competitors.map((comp) => (
                 <div
                   key={comp.id}
-                  className="flex flex-col md:flex-row items-stretch md:items-center gap-4 p-4 bg-background border border-border-dim rounded-xl transition-all duration-300 hover:border-accent-primary/30"
+                  className="flex flex-col md:flex-row items-stretch md:items-center gap-4 p-5 bg-background border border-border-dim rounded-xl transition-all duration-300 hover:border-accent-primary/30 shadow-sm"
                 >
-                  <input
-                    type="text"
-                    placeholder="Company name"
-                    value={comp.name}
-                    onChange={(e) => updateCompetitor(comp.id, { name: e.target.value })}
-                    className="flex-1 px-3 py-2 bg-foreground/[0.03] border border-border-dim rounded-lg text-foreground focus:outline-none focus:border-accent-primary text-sm"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Competitor URL"
-                    value={comp.url || ""}
-                    onChange={(e) => updateCompetitor(comp.id, { url: e.target.value })}
-                    className="flex-1 px-3 py-2 bg-foreground/[0.03] border border-border-dim rounded-lg text-foreground focus:outline-none focus:border-accent-primary text-sm"
-                  />
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-muted-text mb-1 uppercase tracking-wider">Company Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Acme Corp"
+                      value={comp.name}
+                      onChange={(e) => updateCompetitor(comp.id, { name: e.target.value })}
+                      className="w-full px-3 py-2 bg-foreground/[0.03] border border-border-dim rounded-lg text-foreground focus:outline-none focus:border-accent-primary text-sm font-medium"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-muted-text mb-1 uppercase tracking-wider">Website URL</label>
+                    <input
+                      type="text"
+                      placeholder="https://example.com"
+                      value={comp.url || ""}
+                      onChange={(e) => updateCompetitor(comp.id, { url: e.target.value })}
+                      className="w-full px-3 py-2 bg-foreground/[0.03] border border-border-dim rounded-lg text-foreground focus:outline-none focus:border-accent-primary text-sm font-medium"
+                    />
+                  </div>
                   <button
                     onClick={() => removeCompetitor(comp.id)}
-                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors flex items-center justify-center shrink-0"
+                    className="self-end md:self-center p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors flex items-center justify-center shrink-0 mt-2 md:mt-0"
+                    aria-label="Remove competitor"
                   >
                     <Trash2 className="w-5 h-5" />
                     <span className="md:hidden ml-2 font-bold text-sm">Remove</span>
@@ -597,7 +619,7 @@ export default function ComparePage() {
                 Running Audits...
               </>
             ) : (
-              "Run Comparison"
+              "Analyze & Compare Sites"
             )}
           </button>
         </div>

@@ -288,21 +288,6 @@ export function PricingPlans({
                         </button>
                     </div>
 
-                    {/* Currency Toggle */}
-                    <div className="flex items-center gap-1 md:gap-2 p-1 bg-card border border-border-dim rounded-xl w-full sm:w-auto">
-                        <button
-                            onClick={() => setRegion("GLOBAL")}
-                            className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${region === "GLOBAL" ? "bg-foreground text-background shadow-md" : "text-muted-text hover:text-foreground"}`}
-                        >
-                            USD ($)
-                        </button>
-                        <button
-                            onClick={() => setRegion("IN")}
-                            className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${region === "IN" ? "bg-foreground text-background shadow-md" : "text-muted-text hover:text-foreground"}`}
-                        >
-                            INR (₹)
-                        </button>
-                    </div>
                 </div>
             </div>
 

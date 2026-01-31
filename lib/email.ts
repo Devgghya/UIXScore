@@ -36,3 +36,23 @@ export async function sendEmail({ to, subject, html }: { to: string; subject: st
         throw new Error("Failed to send verification email");
     }
 }
+
+export async function sendPasswordResetEmail(email: string, token: string) {
+    const resetLink = `http://${process.env.NEXT_PUBLIC_APP_URL || "localhost:3000"}/reset-password?token=${token}`;
+
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #4f46e5;">Reset Your Password</h2>
+            <p>You requested a password reset for your UIXScore account.</p>
+            <p>Click the button below to reset it. This link expires in 1 hour.</p>
+            <a href="${resetLink}" style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin-top: 10px; font-weight: bold;">Reset Password</a>
+            <p style="margin-top: 20px; font-size: 12px; color: #666;">If you didn't request this, you can safely ignore this email.</p>
+        </div>
+    `;
+
+    await sendEmail({
+        to: email,
+        subject: "Reset Your UIXScore Password",
+        html
+    });
+}
