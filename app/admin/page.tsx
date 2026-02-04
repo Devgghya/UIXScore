@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Search, Shield, Zap, User, ArrowUpDown, Rocket, Coffee, UserPlus, Lock, Mail } from "lucide-react";
+import { Loader2, Search, Shield, Zap, User, ArrowUpDown, Rocket, Coffee, UserPlus, Lock, Mail, Users, BarChart3, Ghost, TrendingUp, Crown, Calendar, Globe, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
 
 interface AdminUser {
     user_id: string;
@@ -31,7 +30,57 @@ interface AuditRecord {
     image_url: string;
 }
 
+interface DashboardStats {
+    totalUsers: number;
+    totalAudits: number;
+    guestAudits: number;
+    auditsToday: number;
+    proUsers: number;
+    newUsersMonth: number;
+}
+
+interface GuestAudit {
+    ip: string;
+    auditCount: number;
+    lastAudit: string;
+    firstAudit: string;
+    frameworks: string[];
+}
+
+interface AllAudit {
+    id: string;
+    title: string;
+    imageUrl: string;
+    framework: string;
+    createdAt: string;
+    ip: string;
+    score: number;
+    isGuest: boolean;
+    user: { id: string; name: string; email: string } | null;
+}
+
+type TabType = 'users' | 'guests' | 'audits';
+
 export default function AdminPage() {
+    const [activeTab, setActiveTab] = useState<TabType>('users');
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [statsLoading, setStatsLoading] = useState(true);
+
+    // Guest audits state
+    const [guestAudits, setGuestAudits] = useState<GuestAudit[]>([]);
+    const [guestPage, setGuestPage] = useState(1);
+    const [guestTotalPages, setGuestTotalPages] = useState(1);
+    const [guestLoading, setGuestLoading] = useState(false);
+
+    // All audits state
+    const [allAudits, setAllAudits] = useState<AllAudit[]>([]);
+    const [auditPage, setAuditPage] = useState(1);
+    const [auditTotalPages, setAuditTotalPages] = useState(1);
+    const [auditLoading, setAuditLoading] = useState(false);
+    const [auditSearch, setAuditSearch] = useState("");
+    const [auditFilter, setAuditFilter] = useState<'all' | 'user' | 'guest'>('all');
+
+    // Existing state
     const [users, setUsers] = useState<AdminUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -94,8 +143,58 @@ export default function AdminPage() {
             .finally(() => setLoading(false));
     };
 
+    const fetchStats = async () => {
+        setStatsLoading(true);
+        try {
+            const res = await fetch("/api/admin/stats");
+            const data = await res.json();
+            if (data.stats) setStats(data.stats);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setStatsLoading(false);
+        }
+    };
+
+    const fetchGuestAudits = async (page = 1) => {
+        setGuestLoading(true);
+        try {
+            const res = await fetch(`/api/admin/guest-audits?page=${page}&limit=15`);
+            const data = await res.json();
+            if (data.guests) setGuestAudits(data.guests);
+            if (data.pagination) {
+                setGuestPage(data.pagination.page);
+                setGuestTotalPages(data.pagination.totalPages);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setGuestLoading(false);
+        }
+    };
+
+    const fetchAllAudits = async (page = 1, search = "", type = "all") => {
+        setAuditLoading(true);
+        try {
+            const params = new URLSearchParams({ page: String(page), limit: "15", type });
+            if (search) params.append("search", search);
+            const res = await fetch(`/api/admin/all-audits?${params}`);
+            const data = await res.json();
+            if (data.audits) setAllAudits(data.audits);
+            if (data.pagination) {
+                setAuditPage(data.pagination.page);
+                setAuditTotalPages(data.pagination.totalPages);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setAuditLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchUsers();
+        fetchStats();
     }, []);
 
     const filteredUsers = users.filter((u) =>
@@ -284,185 +383,447 @@ export default function AdminPage() {
     }
 
     return (
-        <div>
-            <div className="flex justify-between items-end mb-8">
+        <div className="space-y-6">
+            {/* Stats Dashboard */}
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4"
+            >
+                {[
+                    { label: "Total Users", value: stats?.totalUsers || 0, icon: Users, color: "indigo", delay: 0 },
+                    { label: "Total Audits", value: stats?.totalAudits || 0, icon: BarChart3, color: "emerald", delay: 0.1 },
+                    { label: "Guest Audits", value: stats?.guestAudits || 0, icon: Ghost, color: "purple", delay: 0.2 },
+                    { label: "Today", value: stats?.auditsToday || 0, icon: TrendingUp, color: "amber", delay: 0.3 },
+                    { label: "Pro Users", value: stats?.proUsers || 0, icon: Crown, color: "blue", delay: 0.4 },
+                    { label: "New This Month", value: stats?.newUsersMonth || 0, icon: Calendar, color: "rose", delay: 0.5 },
+                ].map((stat) => (
+                    <motion.div
+                        key={stat.label}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: stat.delay, duration: 0.3 }}
+                        className={`bg-card border border-border-dim rounded-xl p-4 hover:border-${stat.color}-500/30 transition-all hover:shadow-lg hover:shadow-${stat.color}-500/5 group cursor-default`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl bg-${stat.color}-500/10 flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                                <stat.icon className={`w-5 h-5 text-${stat.color}-500`} />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-black text-foreground">
+                                    {statsLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : stat.value.toLocaleString()}
+                                </p>
+                                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-text">{stat.label}</p>
+                            </div>
+                        </div>
+                    </motion.div>
+                ))}
+            </motion.div>
+
+            {/* Header with Tabs */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 <div>
                     <h1 className="text-3xl font-black text-foreground mb-2 flex items-center gap-3">
                         <Shield className="w-8 h-8 text-accent-primary" />
-                        User Management
+                        Admin Console
                     </h1>
-                    <p className="text-muted-text font-medium">Overview of all registered users and their usage.</p>
+                    <p className="text-muted-text font-medium">Manage users, track activity, and monitor audits.</p>
                 </div>
-                <div className="flex gap-4 items-center">
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="bg-accent-primary hover:bg-accent-primary/90 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-accent-primary/20"
-                    >
-                        <UserPlus className="w-4 h-4" />
-                        Create User
-                    </button>
-                    <div className="relative group">
-                        <select
-                            value={searchType}
-                            onChange={(e) => setSearchType(e.target.value as 'id' | 'email')}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 bg-transparent text-xs text-muted-text border-none focus:ring-0 cursor-pointer hover:text-foreground transition-colors font-bold"
-                        >
-                            <option value="id">ID/Name</option>
-                            <option value="email">Email</option>
-                        </select>
-                        <input
-                            type="text"
-                            placeholder={searchType === 'id' ? "Search Name/ID..." : "Search Email..."}
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && searchType === 'email') {
-                                    fetchUsers(search);
-                                }
+
+                {/* Tab Navigation */}
+                <div className="flex items-center gap-2 p-1 bg-card border border-border-dim rounded-xl">
+                    {[
+                        { id: 'users' as TabType, label: 'Users', icon: Users },
+                        { id: 'guests' as TabType, label: 'Guest Activity', icon: Ghost },
+                        { id: 'audits' as TabType, label: 'All Audits', icon: Eye },
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => {
+                                setActiveTab(tab.id);
+                                if (tab.id === 'guests' && guestAudits.length === 0) fetchGuestAudits();
+                                if (tab.id === 'audits' && allAudits.length === 0) fetchAllAudits();
                             }}
-                            className="pl-24 pr-10 py-2.5 bg-card border border-border-dim rounded-xl text-sm focus:outline-none focus:border-accent-primary w-80 text-foreground placeholder:text-muted-text/50 shadow-sm transition-all focus:ring-2 focus:ring-accent-primary/20"
-                        />
-                        {searchType === 'email' && (
-                            <button
-                                onClick={() => fetchUsers(search)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-foreground/5 rounded-md text-muted-text hover:text-accent-primary transition-all font-bold text-[10px]"
-                            >
-                                GO
-                            </button>
-                        )}
-                        {searchType === 'id' && <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-text" />}
-                    </div>
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === tab.id
+                                ? "bg-accent-primary text-white shadow-lg"
+                                : "text-muted-text hover:text-foreground hover:bg-foreground/5"
+                                }`}
+                        >
+                            <tab.icon className="w-4 h-4" />
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            {selectedUserIds.size > 0 && (
-                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-4 animate-in slide-in-from-bottom-4">
-                    <span className="font-bold text-sm">{selectedUserIds.size} users selected</span>
-                    <div className="h-4 w-px bg-white/20" />
-                    <button
-                        onClick={handleBulkDelete}
-                        disabled={actionLoading}
-                        className="font-bold text-sm hover:text-indigo-200 transition-colors flex items-center gap-2"
-                    >
-                        {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                        Delete Selected
-                    </button>
-                    <button
-                        onClick={() => { setSelectedUserIds(new Set()); setIsAllSelected(false); }}
-                        className="p-1 hover:bg-white/10 rounded-full"
-                    >
-                        ✕
-                    </button>
-                </div>
+            {/* Users Tab Header */}
+            {activeTab === 'users' && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex gap-4 items-center justify-end"
+                >
+                    <div className="flex gap-4 items-center">
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            className="bg-accent-primary hover:bg-accent-primary/90 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-accent-primary/20"
+                        >
+                            <UserPlus className="w-4 h-4" />
+                            Create User
+                        </button>
+                        <div className="relative group">
+                            <select
+                                value={searchType}
+                                onChange={(e) => setSearchType(e.target.value as 'id' | 'email')}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 bg-transparent text-xs text-muted-text border-none focus:ring-0 cursor-pointer hover:text-foreground transition-colors font-bold"
+                            >
+                                <option value="id">ID/Name</option>
+                                <option value="email">Email</option>
+                            </select>
+                            <input
+                                type="text"
+                                placeholder={searchType === 'id' ? "Search Name/ID..." : "Search Email..."}
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && searchType === 'email') {
+                                        fetchUsers(search);
+                                    }
+                                }}
+                                className="pl-24 pr-10 py-2.5 bg-card border border-border-dim rounded-xl text-sm focus:outline-none focus:border-accent-primary w-80 text-foreground placeholder:text-muted-text/50 shadow-sm transition-all focus:ring-2 focus:ring-accent-primary/20"
+                            />
+                            {searchType === 'email' && (
+                                <button
+                                    onClick={() => fetchUsers(search)}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-foreground/5 rounded-md text-muted-text hover:text-accent-primary transition-all font-bold text-[10px]"
+                                >
+                                    GO
+                                </button>
+                            )}
+                            {searchType === 'id' && <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-text" />}
+                        </div>
+                    </div>
+                </motion.div>
             )}
 
-            <div className="bg-card border border-border-dim rounded-xl overflow-hidden shadow-xl">
-                <table className="w-full text-left bg-transparent">
-                    <thead>
-
-                        <tr className="bg-foreground/5 border-b border-border-dim text-xs uppercase tracking-wider text-muted-text">
-                            <th className="px-6 py-4 w-12">
-                                <input
-                                    type="checkbox"
-                                    checked={isAllSelected}
-                                    onChange={handleSelectAll}
-                                    className="rounded border-border-dim bg-background text-accent-primary focus:ring-0 cursor-pointer"
-                                />
-                            </th>
-                            <th className="px-6 py-4 font-bold cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('first_name')}>User</th>
-                            <th className="px-6 py-4 font-bold cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('plan')}>Plan</th>
-                            <th className="px-6 py-4 font-bold cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('audits_used')}>Monthly Usage</th>
-                            <th className="px-6 py-4 font-bold cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('total_scans')}>Lifetime Scans</th>
-                            <th className="px-6 py-4 font-bold cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('last_ip')}>Last IP</th>
-                            <th className="px-6 py-4 font-bold text-right cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('last_active')}>Last Active</th>
-                        </tr>
-                    </thead>
-
-                    <tbody className="divide-y divide-border-dim">
-                        {sortedUsers.map((user) => (
-                            <tr
-                                key={user.user_id}
-                                className="hover:bg-foreground/[0.03] transition-colors cursor-pointer border-t border-border-dim/50"
-                                onClick={() => setSelectedUser(user)}
+            {/* USERS TAB CONTENT */}
+            {activeTab === 'users' && (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                >
+                    {selectedUserIds.size > 0 && (
+                        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-4 animate-in slide-in-from-bottom-4">
+                            <span className="font-bold text-sm">{selectedUserIds.size} users selected</span>
+                            <div className="h-4 w-px bg-white/20" />
+                            <button
+                                onClick={handleBulkDelete}
+                                disabled={actionLoading}
+                                className="font-bold text-sm hover:text-indigo-200 transition-colors flex items-center gap-2"
                             >
-                                <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedUserIds.has(user.user_id)}
-                                        onChange={() => handleSelectUser(user.user_id)}
+                                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                Delete Selected
+                            </button>
+                            <button
+                                onClick={() => { setSelectedUserIds(new Set()); setIsAllSelected(false); }}
+                                className="p-1 hover:bg-white/10 rounded-full"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
 
-                                        className="rounded border-border-dim bg-background text-accent-primary focus:ring-0 cursor-pointer"
-                                    />
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center text-muted-text overflow-hidden">
-                                            {user.image_url ? <img src={user.image_url} alt="" className="w-full h-full object-cover" /> : <User className="w-4 h-4" />}
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-foreground text-sm">{user.first_name} {user.last_name}</p>
-                                            <p className="text-xs text-slate-500">{user.email}</p>
-                                            <p className="font-mono text-[10px] text-slate-600 truncate w-32" title={user.user_id}>
-                                                {user.user_id}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    {user.plan === "pro" ? (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-bold">
-                                            <SparklesIcon className="w-3 h-3" /> Pro Analyst
-                                        </span>
-                                    ) : user.plan === "design" || user.plan === "agency" ? (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-bold">
-                                            <Shield className="w-3 h-3" /> Design Studio
-                                        </span>
-                                    ) : user.plan === "enterprise" ? (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs font-bold">
-                                            <Shield className="w-3 h-3" /> Enterprise
-                                        </span>
-                                    ) : (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/20 text-xs font-bold">
-                                            Starter
-                                        </span>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="flex flex-col gap-1 w-32">
-                                        <div className="flex justify-between text-[10px] font-bold text-muted-text uppercase tracking-wider">
-                                            <span>{user.audits_used}</span>
-                                            <span>{user.plan === 'free' ? '3' : user.plan === 'pro' ? '60' : '∞'}</span>
-                                        </div>
-                                        <div className="h-1.5 bg-foreground/10 rounded-full overflow-hidden">
-                                            <div
-                                                className={`h-full rounded-full ${user.plan === 'pro' || user.plan === 'design' || user.plan === 'enterprise' ? 'bg-indigo-500' : 'bg-slate-500'}`}
-                                                style={{ width: `${Math.min((user.audits_used / (user.plan === 'free' ? 3 : user.plan === 'pro' ? 60 : 100)) * 100, 100)}%` }}
+                    <div className="bg-card border border-border-dim rounded-xl overflow-hidden shadow-xl">
+                        <table className="w-full text-left bg-transparent">
+                            <thead>
+                                <tr className="bg-foreground/5 border-b border-border-dim text-xs uppercase tracking-wider text-muted-text">
+                                    <th className="px-6 py-4 w-12">
+                                        <input
+                                            type="checkbox"
+                                            checked={isAllSelected}
+                                            onChange={handleSelectAll}
+                                            className="rounded border-border-dim bg-background text-accent-primary focus:ring-0 cursor-pointer"
+                                        />
+                                    </th>
+                                    <th className="px-6 py-4 font-bold cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('first_name')}>User</th>
+                                    <th className="px-6 py-4 font-bold cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('plan')}>Plan</th>
+                                    <th className="px-6 py-4 font-bold cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('audits_used')}>Monthly Usage</th>
+                                    <th className="px-6 py-4 font-bold cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('total_scans')}>Lifetime Scans</th>
+                                    <th className="px-6 py-4 font-bold cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('last_ip')}>Last IP</th>
+                                    <th className="px-6 py-4 font-bold text-right cursor-pointer hover:text-accent-primary transition-colors" onClick={() => handleSort('last_active')}>Last Active</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border-dim">
+                                {sortedUsers.map((user) => (
+                                    <tr
+                                        key={user.user_id}
+                                        className="hover:bg-foreground/[0.03] transition-colors cursor-pointer border-t border-border-dim/50"
+                                        onClick={() => setSelectedUser(user)}
+                                    >
+                                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedUserIds.has(user.user_id)}
+                                                onChange={() => handleSelectUser(user.user_id)}
+                                                className="rounded border-border-dim bg-background text-accent-primary focus:ring-0 cursor-pointer"
                                             />
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2 text-foreground font-bold">
-                                        <Zap className="w-4 h-4 text-amber-500" />
-                                        {user.total_scans}
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 font-mono text-xs text-muted-text">
-                                    {user.last_ip || "Unknown"}
-                                </td>
-                                <td className="px-6 py-4 text-right text-sm text-muted-text font-mono">
-                                    {user.last_active ? new Date(user.last_active).toLocaleDateString() : "-"}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                {filteredUsers.length === 0 && (
-                    <div className="p-12 text-center text-slate-500">
-                        No users found matching your search.
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center text-muted-text overflow-hidden">
+                                                    {user.image_url ? <img src={user.image_url} alt="" className="w-full h-full object-cover" /> : <User className="w-4 h-4" />}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-foreground text-sm">{user.first_name} {user.last_name}</p>
+                                                    <p className="text-xs text-slate-500">{user.email}</p>
+                                                    <p className="font-mono text-[10px] text-slate-600 truncate w-32" title={user.user_id}>
+                                                        {user.user_id}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {user.plan === "pro" ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-bold">
+                                                    <SparklesIcon className="w-3 h-3" /> Pro
+                                                </span>
+                                            ) : user.plan === "enterprise" ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs font-bold">
+                                                    <Shield className="w-3 h-3" /> Enterprise
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/20 text-xs font-bold">
+                                                    Free
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1 w-32">
+                                                <div className="flex justify-between text-[10px] font-bold text-muted-text uppercase tracking-wider">
+                                                    <span>{user.audits_used}</span>
+                                                    <span>{user.plan === 'free' ? 'Unlimited' : user.plan === 'pro' ? 'Unlimited' : '∞'}</span>
+                                                </div>
+                                                <div className="h-1.5 bg-foreground/10 rounded-full overflow-hidden">
+                                                    <div
+                                                        className={`h-full rounded-full ${user.plan === 'pro' || user.plan === 'enterprise' ? 'bg-indigo-500' : 'bg-slate-500'}`}
+                                                        style={{ width: `${Math.min((user.audits_used / 100) * 100, 100)}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2 text-foreground font-bold">
+                                                <Zap className="w-4 h-4 text-amber-500" />
+                                                {user.total_scans}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 font-mono text-xs text-muted-text">
+                                            {user.last_ip || "Unknown"}
+                                        </td>
+                                        <td className="px-6 py-4 text-right text-sm text-muted-text font-mono">
+                                            {user.last_active ? new Date(user.last_active).toLocaleDateString() : "-"}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {filteredUsers.length === 0 && (
+                            <div className="p-12 text-center text-slate-500">
+                                No users found matching your search.
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
+                </motion.div>
+            )}
+
+            {/* GUEST ACTIVITY TAB */}
+            {activeTab === 'guests' && (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                >
+                    <div className="bg-card border border-border-dim rounded-xl overflow-hidden shadow-xl">
+                        <table className="w-full text-left bg-transparent">
+                            <thead>
+                                <tr className="bg-foreground/5 border-b border-border-dim text-xs uppercase tracking-wider text-muted-text">
+                                    <th className="px-6 py-4 font-bold">IP Address</th>
+                                    <th className="px-6 py-4 font-bold">Total Audits</th>
+                                    <th className="px-6 py-4 font-bold">Frameworks Used</th>
+                                    <th className="px-6 py-4 font-bold">First Seen</th>
+                                    <th className="px-6 py-4 font-bold text-right">Last Audit</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border-dim">
+                                {guestLoading ? (
+                                    <tr><td colSpan={5} className="p-8 text-center text-muted-text">Loading guest data...</td></tr>
+                                ) : guestAudits.map((guest, idx) => (
+                                    <tr key={idx} className="hover:bg-foreground/[0.03] transition-colors">
+                                        <td className="px-6 py-4 font-mono text-xs text-indigo-400">{guest.ip}</td>
+                                        <td className="px-6 py-4 font-bold">{guest.auditCount}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex gap-1 flex-wrap">
+                                                {guest.frameworks.map(fw => (
+                                                    <span key={fw} className="text-[10px] bg-foreground/10 px-1.5 py-0.5 rounded capitalize">{fw}</span>
+                                                ))}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-xs text-muted-text">{new Date(guest.firstAudit).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 text-xs text-muted-text text-right">{new Date(guest.lastAudit).toLocaleDateString()}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        {/* Pagination */}
+                        <div className="p-4 border-t border-border-dim flex justify-between items-center bg-foreground/[0.02]">
+                            <button
+                                disabled={guestPage === 1 || guestLoading}
+                                onClick={() => fetchGuestAudits(guestPage - 1)}
+                                className="p-2 hover:bg-foreground/10 rounded-lg disabled:opacity-50"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <span className="text-sm font-bold text-muted-text">Page {guestPage} of {guestTotalPages}</span>
+                            <button
+                                disabled={guestPage === guestTotalPages || guestLoading}
+                                onClick={() => fetchGuestAudits(guestPage + 1)}
+                                className="p-2 hover:bg-foreground/10 rounded-lg disabled:opacity-50"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
+            {/* ALL AUDITS TROWSER TAB */}
+            {activeTab === 'audits' && (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                >
+                    <div className="mb-4 flex gap-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-text" />
+                            <input
+                                type="text"
+                                placeholder="Search by audit title..."
+                                value={auditSearch}
+                                onChange={(e) => setAuditSearch(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && fetchAllAudits(1, auditSearch, auditFilter)}
+                                className="w-full pl-9 pr-3 py-2.5 bg-card border border-border-dim rounded-xl text-sm focus:outline-none focus:border-accent-primary"
+                            />
+                        </div>
+                        <select
+                            value={auditFilter}
+                            onChange={(e) => {
+                                setAuditFilter(e.target.value as any);
+                                fetchAllAudits(1, auditSearch, e.target.value);
+                            }}
+                            className="bg-card border border-border-dim rounded-xl px-4 text-sm font-bold text-muted-text focus:outline-none focus:border-accent-primary"
+                        >
+                            <option value="all">All Users</option>
+                            <option value="user">Registered</option>
+                            <option value="guest">Guests</option>
+                        </select>
+                        <button
+                            onClick={() => fetchAllAudits(1, auditSearch, auditFilter)}
+                            className="bg-accent-primary text-white px-6 rounded-xl font-bold text-sm"
+                        >
+                            Search
+                        </button>
+                    </div>
+
+                    <div className="bg-card border border-border-dim rounded-xl overflow-hidden shadow-xl">
+                        <table className="w-full text-left bg-transparent">
+                            <thead>
+                                <tr className="bg-foreground/5 border-b border-border-dim text-xs uppercase tracking-wider text-muted-text">
+                                    <th className="px-6 py-4 font-bold">Audit</th>
+                                    <th className="px-6 py-4 font-bold">User</th>
+                                    <th className="px-6 py-4 font-bold">Score</th>
+                                    <th className="px-6 py-4 font-bold">Framework</th>
+                                    <th className="px-6 py-4 font-bold text-right">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border-dim">
+                                {auditLoading ? (
+                                    <tr><td colSpan={5} className="p-8 text-center text-muted-text">Loading audits...</td></tr>
+                                ) : allAudits.map((audit) => (
+                                    <tr key={audit.id} className="hover:bg-foreground/[0.03] transition-colors group">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded bg-muted/20 overflow-hidden shrink-0 border border-border-dim">
+                                                    {audit.imageUrl && <img src={audit.imageUrl} className="w-full h-full object-cover" />}
+                                                </div>
+                                                <span className="font-bold text-sm text-foreground truncate max-w-[200px]">{audit.title}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {audit.user ? (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-[10px] font-bold">
+                                                        {audit.user.name[0]}
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold text-foreground">{audit.user.name}</span>
+                                                        <span className="text-[10px] text-muted-text">{audit.user.email}</span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-6 h-6 rounded-full bg-slate-500/10 text-slate-500 flex items-center justify-center">
+                                                        <Ghost className="w-3 h-3" />
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold text-muted-text">Guest User</span>
+                                                        <span className="text-[10px] font-mono text-slate-500">{audit.ip}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${audit.score >= 80 ? 'bg-green-500/10 text-green-400' :
+                                                    audit.score >= 60 ? 'bg-amber-500/10 text-amber-400' :
+                                                        'bg-red-500/10 text-red-400'
+                                                }`}>
+                                                {audit.score}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-xs capitalize text-muted-text bg-foreground/5 px-2 py-1 rounded">{audit.framework}</span>
+                                        </td>
+                                        <td className="px-6 py-4 text-xs text-muted-text text-right font-mono">
+                                            {new Date(audit.createdAt).toLocaleDateString()}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        {/* Pagination */}
+                        <div className="p-4 border-t border-border-dim flex justify-between items-center bg-foreground/[0.02]">
+                            <button
+                                disabled={auditPage === 1 || auditLoading}
+                                onClick={() => fetchAllAudits(auditPage - 1, auditSearch, auditFilter)}
+                                className="p-2 hover:bg-foreground/10 rounded-lg disabled:opacity-50"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <span className="text-sm font-bold text-muted-text">Page {auditPage} of {auditTotalPages}</span>
+                            <button
+                                disabled={auditPage === auditTotalPages || auditLoading}
+                                onClick={() => fetchAllAudits(auditPage + 1, auditSearch, auditFilter)}
+                                className="p-2 hover:bg-foreground/10 rounded-lg disabled:opacity-50"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
 
             {/* User Detail Modal */}
             {
@@ -569,7 +930,7 @@ export default function AdminPage() {
                                                             <div className="flex justify-between items-center">
                                                                 <h4 className="text-sm font-bold text-foreground truncate">{audit.ui_title || "Untitled"}</h4>
                                                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${audit.score >= 80 ? 'bg-green-500/10 text-green-400' :
-                                                                        audit.score >= 60 ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'
+                                                                    audit.score >= 60 ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'
                                                                     }`}>{audit.score}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center text-[10px] text-muted-text mt-0.5">
