@@ -341,6 +341,54 @@ export function PricingPlans({
                 </div>
             </div>
 
+            {/* 🎯 HERO BANNER - Unlimited Audits for Free */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="mb-8 md:mb-12 relative"
+            >
+                <div className="relative bg-gradient-to-r from-emerald-500/10 via-green-500/10 to-teal-500/10 border-2 border-emerald-500/30 rounded-3xl p-6 md:p-10 overflow-hidden">
+                    {/* Animated Background Glow */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-green-500/5 to-teal-500/5 animate-pulse"></div>
+
+                    <div className="relative z-10 text-center">
+                        <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest mb-4 animate-bounce">
+                            <Sparkles className="w-4 h-4" />
+                            Limited Time Offer
+                        </div>
+                        <h3 className="text-3xl md:text-5xl lg:text-6xl font-black text-foreground mb-3 md:mb-4">
+                            <span className="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 dark:from-emerald-400 dark:via-green-400 dark:to-teal-400 bg-clip-text text-transparent">
+                                Unlimited Audits
+                            </span>
+                            <br />
+                            <span className="text-2xl md:text-4xl lg:text-5xl">Forever Free!</span>
+                        </h3>
+                        <p className="text-muted-text text-sm md:text-lg max-w-2xl mx-auto mb-6">
+                            No credit card required. No trials. Just unlimited professional UI/UX audits, completely free. Start analyzing your designs right now!
+                        </p>
+                        <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8">
+                            <div className="flex items-center gap-2">
+                                <Check className="w-5 h-5 text-emerald-500" />
+                                <span className="text-xs md:text-sm font-bold text-foreground">No Signup Needed</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Check className="w-5 h-5 text-emerald-500" />
+                                <span className="text-xs md:text-sm font-bold text-foreground">All Frameworks Included</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Check className="w-5 h-5 text-emerald-500" />
+                                <span className="text-xs md:text-sm font-bold text-foreground">5 PDF Reports/Month</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Decorative Elements */}
+                    <div className="absolute top-4 right-4 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl"></div>
+                    <div className="absolute bottom-4 left-4 w-32 h-32 bg-green-500/10 rounded-full blur-3xl"></div>
+                </div>
+            </motion.div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-4xl mx-auto">
 
                 {PLANS.map((plan) => (
@@ -401,60 +449,71 @@ export function PricingPlans({
 
                         <ul className="space-y-4 mb-8">
                             {plan.features.map((feature, idx) => (
-                                <li key={idx} className="flex items-start gap-3 text-base text-muted-text font-medium leading-relaxed">
+                                <li key={idx} className={`flex items-start gap-3 text-base font-medium leading-relaxed ${plan.id === "free" && feature.includes("Unlimited Audits")
+                                        ? "relative p-3 -mx-3 rounded-xl bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-500/30"
+                                        : "text-muted-text"
+                                    }`}>
                                     <Check className={`w-5 h-5 shrink-0 mt-0.5 ${plan.color === "indigo" ? "text-indigo-600 dark:text-indigo-400" :
                                         plan.color === "purple" ? "text-purple-600 dark:text-purple-400" :
                                             plan.color === "blue" ? "text-blue-600 dark:text-blue-400" :
                                                 plan.color === "emerald" ? "text-emerald-600 dark:text-emerald-400" :
                                                     "text-slate-600 dark:text-slate-400"
                                         }`} />
-                                    {feature}
+                                    {plan.id === "free" && feature.includes("Unlimited Audits") ? (
+                                        <span className="font-black bg-gradient-to-r from-emerald-600 to-green-600 dark:from-emerald-400 dark:to-green-400 bg-clip-text text-transparent flex items-center gap-2">
+                                            {feature}
+                                            <span className="bg-emerald-500 text-white text-[10px] px-2 py-0.5 rounded-full">FREE</span>
+                                        </span>
+                                    ) : (
+                                        feature
+                                    )}
+                                </li>
                                 </li>
                             ))}
-                        </ul>
+                    </ul>
 
-                        {currentPlan === plan.id && subscriptionId ? (
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-center gap-2 py-3 px-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold text-sm">
-                                    <Check className="w-4 h-4" />
-                                    Active Plan
-                                </div>
-                                <button
-                                    onClick={handleCancelSubscription}
-                                    disabled={cancelling}
-                                    className="w-full py-2 text-xs font-bold text-red-500 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    {cancelling ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
-                                    Cancel Subscription
-                                </button>
+                        { currentPlan === plan.id && subscriptionId ? (
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-center gap-2 py-3 px-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold text-sm">
+                                <Check className="w-4 h-4" />
+                                Active Plan
                             </div>
-                        ) : (
                             <button
-                                onClick={() => handleSubscribe(plan.id)}
-                                disabled={plan.id === "free" || loadingPlan === plan.id}
-                                className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${plan.id === "free"
-                                    ? "bg-foreground/5 text-muted-text cursor-default"
-                                    : plan.recommended
-                                        ? "bg-accent-primary hover:bg-accent-primary/90 text-white shadow-lg shadow-accent-primary/25 hover:shadow-xl hover:shadow-accent-primary/40 hover:scale-[1.02]"
-                                        : "bg-foreground text-background hover:bg-foreground/90 hover:scale-[1.02]"
-                                    }`}
-
+                                onClick={handleCancelSubscription}
+                                disabled={cancelling}
+                                className="w-full py-2 text-xs font-bold text-red-500 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
                             >
-                                {loadingPlan === plan.id ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    <>
-                                        {plan.id !== "free" && <CreditCard className="w-4 h-4" />}
-                                        {plan.cta}
-                                    </>
-                                )}
+                                {cancelling ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                                Cancel Subscription
                             </button>
-                        )}
-                    </div>
-                ))}
-            </div>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => handleSubscribe(plan.id)}
+                            disabled={plan.id === "free" || loadingPlan === plan.id}
+                            className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${plan.id === "free"
+                                ? "bg-foreground/5 text-muted-text cursor-default"
+                                : plan.recommended
+                                    ? "bg-accent-primary hover:bg-accent-primary/90 text-white shadow-lg shadow-accent-primary/25 hover:shadow-xl hover:shadow-accent-primary/40 hover:scale-[1.02]"
+                                    : "bg-foreground text-background hover:bg-foreground/90 hover:scale-[1.02]"
+                                }`}
 
-            {/* Payment Info */}
+                        >
+                            {loadingPlan === plan.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <>
+                                    {plan.id !== "free" && <CreditCard className="w-4 h-4" />}
+                                    {plan.cta}
+                                </>
+                            )}
+                        </button>
+                    )}
+            </div>
+                ))}
+        </div>
+
+            {/* Payment Info */ }
             <div className="mt-8 flex justify-center items-center gap-3">
                 <div className="h-[1px] w-12 bg-border-dim"></div>
                 <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-text flex items-center gap-2">
@@ -500,7 +559,7 @@ export function PricingPlans({
                 </div>
             </div>
 
-            {/* Razorpay Backdrop & Loading State */}
+    {/* Razorpay Backdrop & Loading State */ }
             <AnimatePresence>
                 {
                     loadingPlan && (
