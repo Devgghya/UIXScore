@@ -53,26 +53,12 @@ export async function POST(req: NextRequest) {
         const plan = PLAN_PRICES[planId as keyof typeof PLAN_PRICES];
         const accessToken = await getPayPalAccessToken();
 
-        // For test and one-time payments, create an order
-        // For recurring plans, you might want to use PayPal subscriptions API
-        const isSubscription = planId !== "test";
-
-        if (isSubscription) {
-            // Create PayPal Subscription
-            // Note: You'll need to create subscription plans in PayPal dashboard first
-            // and store the plan IDs in your environment variables
-            return NextResponse.json(
-                { error: "PayPal subscriptions not yet configured. Please set up subscription plans in PayPal dashboard." },
-                { status: 501 }
-            );
-        }
-
         // Detect base URL from request
         const protocol = req.headers.get("x-forwarded-proto") || "http";
         const host = req.headers.get("host");
         const baseUrl = `${protocol}://${host}`;
 
-        // Create a one-time payment order (for test plan or one-time purchases)
+        // Create a one-time payment order for all plans
         const order = {
             intent: "CAPTURE",
             purchase_units: [
