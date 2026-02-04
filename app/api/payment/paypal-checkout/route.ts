@@ -68,6 +68,11 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // Detect base URL from request
+        const protocol = req.headers.get("x-forwarded-proto") || "http";
+        const host = req.headers.get("host");
+        const baseUrl = `${protocol}://${host}`;
+
         // Create a one-time payment order (for test plan or one-time purchases)
         const order = {
             intent: "CAPTURE",
@@ -85,8 +90,8 @@ export async function POST(req: NextRequest) {
                 brand_name: "UIXScore",
                 landing_page: "NO_PREFERENCE",
                 user_action: "PAY_NOW",
-                return_url: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/dashboard?payment=success&plan=${planId}`,
-                cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/dashboard?payment=cancelled`,
+                return_url: `${baseUrl}/dashboard?payment=success&plan=${planId}`,
+                cancel_url: `${baseUrl}/dashboard?payment=cancelled`,
             },
         };
 
