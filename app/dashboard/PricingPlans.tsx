@@ -165,8 +165,8 @@ export function PricingPlans({
             return;
         }
 
-        // Handle non-Indian region payments with PayPal
-        if (region === "GLOBAL") {
+        // Handle non-Indian region payments with PayPal (respect admin override)
+        if (displayRegion === "GLOBAL") {
             setLoadingPlan(planId);
             try {
                 const res = await fetch("/api/payment/paypal-checkout", {
@@ -208,7 +208,7 @@ export function PricingPlans({
             const res = await fetch("/api/payment/create-order", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ planId, billingCycle, currency: region === "IN" ? "INR" : "USD" }),
+                body: JSON.stringify({ planId, billingCycle, currency: displayRegion === "IN" ? "INR" : "USD" }),
             });
 
             if (!res.ok) {
