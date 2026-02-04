@@ -33,7 +33,7 @@ const PLANS: Plan[] = [
             "Unlimited Audits",
             "5 PDF Downloads per month",
             "All Frameworks (WCAG, Gestalt)",
-            "No Signup Required",
+            "Save Audit History",
         ],
         cta: "Get Started Free",
         color: "slate",
@@ -355,22 +355,22 @@ export function PricingPlans({
                     <div className="relative z-10 text-center">
                         <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest mb-4 animate-bounce">
                             <Sparkles className="w-4 h-4" />
-                            Limited Time Offer
+                            Forever Free
                         </div>
                         <h3 className="text-3xl md:text-5xl lg:text-6xl font-black text-foreground mb-3 md:mb-4">
                             <span className="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 dark:from-emerald-400 dark:via-green-400 dark:to-teal-400 bg-clip-text text-transparent">
                                 Unlimited Audits
                             </span>
                             <br />
-                            <span className="text-2xl md:text-4xl lg:text-5xl">Forever Free!</span>
+                            <span className="text-2xl md:text-4xl lg:text-5xl">100% Free!</span>
                         </h3>
                         <p className="text-muted-text text-sm md:text-lg max-w-2xl mx-auto mb-6">
-                            No credit card required. No trials. Just unlimited professional UI/UX audits, completely free. Start analyzing your designs right now!
+                            Sign up for free and get unlimited professional UI/UX audits forever. No credit card required. No trials. Just free audits!
                         </p>
                         <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8">
                             <div className="flex items-center gap-2">
                                 <Check className="w-5 h-5 text-emerald-500" />
-                                <span className="text-xs md:text-sm font-bold text-foreground">No Signup Needed</span>
+                                <span className="text-xs md:text-sm font-bold text-foreground">Free Signup Required</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Check className="w-5 h-5 text-emerald-500" />
@@ -380,6 +380,11 @@ export function PricingPlans({
                                 <Check className="w-5 h-5 text-emerald-500" />
                                 <span className="text-xs md:text-sm font-bold text-foreground">5 PDF Reports/Month</span>
                             </div>
+                        </div>
+                        <div className="inline-block bg-slate-500/10 border border-slate-500/30 rounded-xl px-4 py-2 mt-4">
+                            <p className="text-xs md:text-sm text-muted-text">
+                                <span className="font-bold text-foreground">Guest Mode:</span> Try 2 audits without signing up
+                            </p>
                         </div>
                     </div>
 
