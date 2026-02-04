@@ -450,8 +450,8 @@ export function PricingPlans({
                         <ul className="space-y-4 mb-8">
                             {plan.features.map((feature, idx) => (
                                 <li key={idx} className={`flex items-start gap-3 text-base font-medium leading-relaxed ${plan.id === "free" && feature.includes("Unlimited Audits")
-                                        ? "relative p-3 -mx-3 rounded-xl bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-500/30"
-                                        : "text-muted-text"
+                                    ? "relative p-3 -mx-3 rounded-xl bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-500/30"
+                                    : "text-muted-text"
                                     }`}>
                                     <Check className={`w-5 h-5 shrink-0 mt-0.5 ${plan.color === "indigo" ? "text-indigo-600 dark:text-indigo-400" :
                                         plan.color === "purple" ? "text-purple-600 dark:text-purple-400" :
@@ -468,52 +468,51 @@ export function PricingPlans({
                                         feature
                                     )}
                                 </li>
-                                </li>
                             ))}
-                    </ul>
+                        </ul>
 
-                        { currentPlan === plan.id && subscriptionId ? (
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-center gap-2 py-3 px-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold text-sm">
-                                <Check className="w-4 h-4" />
-                                Active Plan
+                        {currentPlan === plan.id && subscriptionId ? (
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-center gap-2 py-3 px-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold text-sm">
+                                    <Check className="w-4 h-4" />
+                                    Active Plan
+                                </div>
+                                <button
+                                    onClick={handleCancelSubscription}
+                                    disabled={cancelling}
+                                    className="w-full py-2 text-xs font-bold text-red-500 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {cancelling ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                                    Cancel Subscription
+                                </button>
                             </div>
+                        ) : (
                             <button
-                                onClick={handleCancelSubscription}
-                                disabled={cancelling}
-                                className="w-full py-2 text-xs font-bold text-red-500 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
+                                onClick={() => handleSubscribe(plan.id)}
+                                disabled={plan.id === "free" || loadingPlan === plan.id}
+                                className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${plan.id === "free"
+                                    ? "bg-foreground/5 text-muted-text cursor-default"
+                                    : plan.recommended
+                                        ? "bg-accent-primary hover:bg-accent-primary/90 text-white shadow-lg shadow-accent-primary/25 hover:shadow-xl hover:shadow-accent-primary/40 hover:scale-[1.02]"
+                                        : "bg-foreground text-background hover:bg-foreground/90 hover:scale-[1.02]"
+                                    }`}
+
                             >
-                                {cancelling ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
-                                Cancel Subscription
+                                {loadingPlan === plan.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <>
+                                        {plan.id !== "free" && <CreditCard className="w-4 h-4" />}
+                                        {plan.cta}
+                                    </>
+                                )}
                             </button>
-                        </div>
-                    ) : (
-                        <button
-                            onClick={() => handleSubscribe(plan.id)}
-                            disabled={plan.id === "free" || loadingPlan === plan.id}
-                            className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${plan.id === "free"
-                                ? "bg-foreground/5 text-muted-text cursor-default"
-                                : plan.recommended
-                                    ? "bg-accent-primary hover:bg-accent-primary/90 text-white shadow-lg shadow-accent-primary/25 hover:shadow-xl hover:shadow-accent-primary/40 hover:scale-[1.02]"
-                                    : "bg-foreground text-background hover:bg-foreground/90 hover:scale-[1.02]"
-                                }`}
-
-                        >
-                            {loadingPlan === plan.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                                <>
-                                    {plan.id !== "free" && <CreditCard className="w-4 h-4" />}
-                                    {plan.cta}
-                                </>
-                            )}
-                        </button>
-                    )}
-            </div>
+                        )}
+                    </div>
                 ))}
-        </div>
+            </div>
 
-            {/* Payment Info */ }
+            {/* Payment Info */}
             <div className="mt-8 flex justify-center items-center gap-3">
                 <div className="h-[1px] w-12 bg-border-dim"></div>
                 <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-text flex items-center gap-2">
@@ -559,7 +558,7 @@ export function PricingPlans({
                 </div>
             </div>
 
-    {/* Razorpay Backdrop & Loading State */ }
+            {/* Razorpay Backdrop & Loading State */}
             <AnimatePresence>
                 {
                     loadingPlan && (
