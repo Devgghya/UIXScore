@@ -56,6 +56,27 @@ export async function GET() {
       await sql`ALTER TABLE user_usage ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMP WITH TIME ZONE`;
       await sql`ALTER TABLE user_usage ADD COLUMN IF NOT EXISTS subscription_id VARCHAR(255)`;
 
+      // 5. Update users table for plan info
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan VARCHAR(50) DEFAULT 'free'`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMP WITH TIME ZONE`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_id VARCHAR(255)`;
+
+      // 6. Create payment_orders table
+      await sql`
+        CREATE TABLE IF NOT EXISTS payment_orders (
+          id SERIAL PRIMARY KEY,
+          user_id UUID,
+          order_id VARCHAR(255) UNIQUE NOT NULL,
+          plan_id VARCHAR(50) NOT NULL,
+          amount DECIMAL(10,2) NOT NULL,
+          currency VARCHAR(10) DEFAULT 'USD',
+          status VARCHAR(20) DEFAULT 'pending',
+          payment_provider VARCHAR(20) DEFAULT 'paypal',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
+
     } catch (migErr) {
       console.log("Migration notice (safe to ignore if columns exist):", migErr);
     }
