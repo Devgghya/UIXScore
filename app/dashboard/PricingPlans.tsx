@@ -24,21 +24,6 @@ interface Plan {
 
 const PLANS: Plan[] = [
     {
-        id: "test",
-        name: "Developer Test",
-        price: "$1",
-        priceInr: "$1",
-        period: "/one-time",
-        features: [
-            "Test Payment Flow",
-            "7 Days Access",
-            "All Pro Features",
-            "For Testing Only",
-        ],
-        cta: "Test Payment ($1)",
-        color: "emerald",
-    },
-    {
         id: "pro",
         name: "Pro Analyst",
         price: "$6",
@@ -352,7 +337,7 @@ export function PricingPlans({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
 
                 {PLANS.map((plan) => (
                     <div

@@ -33,7 +33,6 @@ async function getPayPalAccessToken(): Promise<string> {
 
 // Plan pricing (match your PricingPlans component)
 const PLAN_PRICES = {
-    test: { usd: 1, name: "Developer Test" },
     pro: { usd: 6, name: "Pro Analyst" },
     design: { usd: 30, name: "Design Studio" },
 };
