@@ -6,8 +6,8 @@ export const runtime = "nodejs";
 
 const RAZORPAY_PLAN_MAPPING: Record<string, Record<string, string>> = {
     pro: {
-        monthly: "plan_S9bmYBnLA4R0r2",  // Pro plan at ₹99/month
-        annual: "plan_S9bzMUOjmefrRH",   // Pro plan annual
+        monthly: "plan_SC1HyWpQZ1FTkv",  // Pro plan at ₹99/month
+        annual: "plan_SC1JGsFlk9VZIF",   // Pro plan at ₹950/year
     },
 };
 
