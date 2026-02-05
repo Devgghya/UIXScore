@@ -19,7 +19,7 @@ export async function GET(req: Request) {
         }
 
         const { rows } = await sql`
-            SELECT id, ui_title, created_at, score, framework, image_url
+            SELECT id, ui_title, created_at, score, framework, image_url, analysis
             FROM audits
             WHERE user_id = ${userId}
             ORDER BY created_at DESC

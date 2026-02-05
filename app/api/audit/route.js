@@ -227,61 +227,73 @@ export async function POST(req) {
 
     const promptText = `
       You are a World-Class UX Consultant & Information Designer. 
+      You possess the product vision of Steve Jobs and the usability rigor of Jakob Nielsen.
+      
       Analyze the provided UI screenshot(s) using the **${framework}** framework.
-      ${mode === 'accessibility' ? 'SPECIAL MODE: ACCESSIBILITY PERSONA TESTING (WCAG 2.1 AA/AAA)' : ''}
+      ${mode === 'accessibility' ? 'SPECIAL MODE: ACCESSIBILITY PERSONA TESTING (WCAG 2.1 AA/AAA) - Focus strictly on contrast, touch targets, and hierarchy.' : ''}
       
       OBJECTIVE:
-      Generate a data-driven, visually-oriented strategic audit.
+      Generate a brutally honest, data-driven, and visually-oriented strategic audit.
+      Your goal is not to be nice, but to highlight exactly why this design might fail to convert or delight.
+      
       YOU MUST RETURN JSON ONLY. NO MARKDOWN.
-
+      
       ### CORE REQUIREMENT: TWO-TIERED ANALYSIS
       Your response must provide value at two different levels:
-      1. STRATEGIC: High-level insights for executives and business owners.
-      2. TECHNICAL: Granular UI/UX issues for designers and developers.
+      1. STRATEGIC (Executive): High-level gaps in trust, brand, flow, and business logic.
+      2. TACTICAL (Designer/Dev): Specific pixel-pushing fixes, color tweaks, and layout adjustments.
+
+      ### SCORING GUIDELINES
+      - < 50: Broken/Unusable
+      - 50-70: MVP/Average (Most sites fall here)
+      - 70-85: Good/Professional
+      - 85-95: World-Class (Apple/Stripe level)
+      - 96-100: Flawless (Rare)
+      *Do not inflate scores. Be critical.*
 
       JSON SCHEMA:
       {
-        "score": 85,
-        "summary_title": "Executive Headline",
-        "summary_text": "A 2-3 sentence executive summary.",
+        "score": 0-100,
+        "summary_title": "Punchy, 3-5 word Strategic Headline",
+        "summary_text": "A direct, no-fluff executive summary (2 sentences). Focus on the 'Why', not the 'What'.",
         "strategic_audit": [
           {
-            "title": "Business/Strategic Priority Name",
-            "issue": "A high-level strategic gap (e.g. 'Poor Information Architecture', 'Lack of Trust Signals', 'Unclear Call-to-Action Strategy').",
-            "solution": "A high-level strategic recommendation."
+            "title": "Strategic Priority",
+            "issue": "High-level strategic gap (e.g. 'Low Trust Signals', 'Confusing Value Prop', 'Friction-Heavy Funnel').",
+            "solution": "Strategic Recommendation (e.g. 'Implement social proof above the fold', 'Simplify sign-up flow to 2 steps')."
           }
         ],
         "ux_metrics": {
-           "clarity": 8,
-           "efficiency": 7,
-           "consistency": 9,
-           "aesthetics": 6,
-           "accessibility": 5
+           "clarity": 0-10,
+           "efficiency": 0-10,
+           "consistency": 0-10,
+           "aesthetics": 0-10,
+           "accessibility": 0-10
         },
-        "key_strengths": ["Strength 1", "Strength 2", "Strength 3"],
-        "key_weaknesses": ["Weakness 1", "Weakness 2", "Weakness 3"],
+        "key_strengths": ["Strength 1 (Be specific)", "Strength 2", "Strength 3"],
+        "key_weaknesses": ["Critical Weakness 1", "Weakness 2", "Weakness 3"],
         "images": [
           {
             "index": 0,
-            "ui_title": "Section Name",
+            "ui_title": "Section/Page Name",
             "audit": [
               {
-                "title": "Granular UI/UX Finding",
-                "issue": "A specific, localized problem (e.g. '4.5:1 contrast ratio failure on primary button', '12px font is too small', 'icon misalignment').",
-                "severity": "critical",
-                "category": "Layout",
-                "solution": "Specific UI fix."
+                "title": "UI/UX Finding",
+                "issue": "Specific problem. Mention colors, pixels, or alignment. (e.g. 'Primary button contrast is 3:1 (fail)', 'Headline hierarchy weak').",
+                "severity": "critical" | "high" | "medium" | "low",
+                "category": "Layout" | "Typography" | "Color" | "Interaction" | "Content",
+                "coordinates": "x,y (0-100 scale, e.g. '50,50' for center). ESTIMATE VISUAL LOCATION.",
+                "solution": "Actionable fix. Suggest Tailwind classes if applicable (e.g. 'Use text-lg font-bold', 'Add gap-4')."
               }
             ]
           }
         ]
       }
 
-      CRITICAL RESTRICTION:
-      - 'strategic_audit' items MUST NOT appear in the 'images[].audit' section.
-      - 'strategic_audit' = BIG PICTURE (Business impact, flow, brand, hierarchy).
-      - 'images[].audit' = DETAILS (Colors, borders, specific text, individual components).
-      - FAILURE TO DIFFERENTIATE WILL RENDER THE AUDIT USELESS.
+      CRITICAL RESTRICTIONS:
+      1. **Strategic != Tactical**. 'strategic_audit' must NOT contain CSS fixes. 'images[].audit' must NOT contain business advice.
+      2. **Specific Severity**. Use 'critical' ONLY for blockers or major trust killers. Use 'low' for nitpicks.
+      3. **No Hallucinations**. If text is unreadable, state that. Do not invent accessibility features you cannot see.
     `;
 
     let result;
@@ -329,7 +341,8 @@ export async function POST(req) {
       issue: item.issue || "No description provided",
       solution: item.solution || "No solution provided",
       severity: item.severity || "medium",
-      category: item.category || "General"
+      category: item.category || "General",
+      coordinates: item.coordinates || null
     }));
 
     const strategicAudit = (parsedData.strategic_audit || []).map((item) => ({

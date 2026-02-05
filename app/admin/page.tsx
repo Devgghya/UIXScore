@@ -3,6 +3,17 @@
 import { useEffect, useState } from "react";
 import { Loader2, Search, Shield, Zap, User, ArrowUpDown, Rocket, Coffee, UserPlus, Lock, Mail, Users, BarChart3, Ghost, TrendingUp, Crown, Calendar, Globe, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import dynamic from "next/dynamic";
+import { ReportViewProps } from "../dashboard/ReportView";
+
+const ReportView = dynamic(() => import("../dashboard/ReportView"), {
+    ssr: false,
+    loading: () => (
+        <div className="h-96 flex items-center justify-center bg-card rounded-3xl border border-border-dim animate-pulse">
+            <Loader2 className="w-8 h-8 animate-spin text-accent-primary" />
+        </div>
+    )
+});
 
 interface AdminUser {
     user_id: string;
@@ -28,6 +39,7 @@ interface AuditRecord {
     score: number;
     framework: string;
     image_url: string;
+    analysis?: any; // Added analysis field
 }
 
 interface DashboardStats {
@@ -57,6 +69,7 @@ interface AllAudit {
     score: number;
     isGuest: boolean;
     user: { id: string; name: string; email: string } | null;
+    analysis?: any;
 }
 
 type TabType = 'users' | 'guests' | 'audits';
@@ -100,6 +113,31 @@ export default function AdminPage() {
         lastName: "",
     });
     const [expiryDate, setExpiryDate] = useState("");
+    const [viewingAudit, setViewingAudit] = useState<AuditRecord | null>(null); // State for Report Viewer
+
+    // IP Location State
+    const [ipModalOpen, setIpModalOpen] = useState(false);
+    const [ipDetails, setIpDetails] = useState<any>(null);
+    const [ipLoading, setIpLoading] = useState(false);
+
+    const handleIpClick = (ip: string) => {
+        if (!ip) return;
+        setIpModalOpen(true);
+        setIpLoading(true);
+        setIpDetails(null);
+
+        // Use ipapi.co for free IP geolocation
+        fetch(`https://ipapi.co/${ip}/json/`)
+            .then(res => res.json())
+            .then(data => {
+                setIpDetails(data);
+                setIpLoading(false);
+            })
+            .catch(err => {
+                console.error("IP Fetch Error", err);
+                setIpLoading(false);
+            });
+    };
 
     useEffect(() => {
         if (selectedUser) {
@@ -619,7 +657,19 @@ export default function AdminPage() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 font-mono text-xs text-muted-text">
-                                            {user.last_ip || "Unknown"}
+                                            {user.last_ip ? (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleIpClick(user.last_ip!);
+                                                    }}
+                                                    className="text-[10px] font-mono text-indigo-400 hover:text-indigo-300 hover:underline text-left"
+                                                >
+                                                    {user.last_ip}
+                                                </button>
+                                            ) : (
+                                                "Unknown"
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-right text-sm text-muted-text font-mono">
                                             {user.last_active ? new Date(user.last_active).toLocaleDateString() : "-"}
@@ -660,7 +710,14 @@ export default function AdminPage() {
                                     <tr><td colSpan={5} className="p-8 text-center text-muted-text">Loading guest data...</td></tr>
                                 ) : guestAudits.map((guest, idx) => (
                                     <tr key={idx} className="hover:bg-foreground/[0.03] transition-colors">
-                                        <td className="px-6 py-4 font-mono text-xs text-indigo-400">{guest.ip}</td>
+                                        <td className="px-6 py-4 font-mono text-xs">
+                                            <button
+                                                onClick={() => handleIpClick(guest.ip)}
+                                                className="text-indigo-400 hover:text-indigo-300 hover:underline font-bold"
+                                            >
+                                                {guest.ip}
+                                            </button>
+                                        </td>
                                         <td className="px-6 py-4 font-bold">{guest.auditCount}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex gap-1 flex-wrap">
@@ -779,15 +836,20 @@ export default function AdminPage() {
                                                     </div>
                                                     <div className="flex flex-col">
                                                         <span className="text-xs font-bold text-muted-text">Guest User</span>
-                                                        <span className="text-[10px] font-mono text-slate-500">{audit.ip}</span>
+                                                        <button
+                                                            onClick={() => handleIpClick(audit.ip)}
+                                                            className="text-[10px] font-mono text-indigo-400 hover:text-indigo-300 hover:underline text-left"
+                                                        >
+                                                            {audit.ip}
+                                                        </button>
                                                     </div>
                                                 </div>
                                             )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`text-xs font-bold px-2 py-0.5 rounded ${audit.score >= 80 ? 'bg-green-500/10 text-green-400' :
-                                                    audit.score >= 60 ? 'bg-amber-500/10 text-amber-400' :
-                                                        'bg-red-500/10 text-red-400'
+                                                audit.score >= 60 ? 'bg-amber-500/10 text-amber-400' :
+                                                    'bg-red-500/10 text-red-400'
                                                 }`}>
                                                 {audit.score}
                                             </span>
@@ -796,7 +858,23 @@ export default function AdminPage() {
                                             <span className="text-xs capitalize text-muted-text bg-foreground/5 px-2 py-1 rounded">{audit.framework}</span>
                                         </td>
                                         <td className="px-6 py-4 text-xs text-muted-text text-right font-mono">
-                                            {new Date(audit.createdAt).toLocaleDateString()}
+                                            <div className="flex flex-col items-end gap-1">
+                                                <span className="text-xs text-muted-text font-mono">{new Date(audit.createdAt).toLocaleDateString()}</span>
+                                                <button
+                                                    onClick={() => setViewingAudit({
+                                                        id: audit.id,
+                                                        ui_title: audit.title,
+                                                        created_at: audit.createdAt,
+                                                        score: audit.score,
+                                                        framework: audit.framework,
+                                                        image_url: audit.imageUrl,
+                                                        analysis: audit.analysis
+                                                    })}
+                                                    className="flex items-center gap-1 text-accent-primary hover:text-white transition-colors font-bold uppercase tracking-wider bg-accent-primary/5 hover:bg-accent-primary px-2 py-0.5 rounded text-[10px]"
+                                                >
+                                                    <Eye className="w-3 h-3" /> View Report
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -892,17 +970,21 @@ export default function AdminPage() {
                                     <div className="bg-foreground/5 p-4 rounded-xl border border-border-dim">
                                         <h3 className="text-xs uppercase font-bold text-muted-text mb-4">Manage Access</h3>
                                         <div className="grid grid-cols-2 gap-2">
-                                            {['free', 'pro', 'design', 'enterprise'].map((tier) => (
+                                            {[
+                                                { id: 'free', label: 'Starter (Free)' },
+                                                { id: 'pro', label: 'Pro' },
+                                                { id: 'enterprise', label: 'Enterprise' }
+                                            ].map((planOpt) => (
                                                 <button
-                                                    key={tier}
-                                                    onClick={() => handleUpdatePlan(selectedUser.user_id, tier)}
-                                                    disabled={actionLoading || selectedUser.plan === tier}
-                                                    className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${selectedUser.plan === tier
+                                                    key={planOpt.id}
+                                                    onClick={() => handleUpdatePlan(selectedUser.user_id, planOpt.id)}
+                                                    disabled={actionLoading || selectedUser.plan === planOpt.id}
+                                                    className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${selectedUser.plan === planOpt.id
                                                         ? "bg-accent-primary border-accent-primary text-white cursor-default shadow-lg shadow-accent-primary/25"
                                                         : "bg-background border-border-dim text-muted-text hover:border-accent-primary/50 hover:text-foreground"
                                                         } disabled:opacity-50`}
                                                 >
-                                                    {tier === 'free' ? 'Starter' : tier === 'design' ? 'Design Studio' : tier.replace('_', ' ')}
+                                                    {planOpt.label}
                                                 </button>
                                             ))}
                                         </div>
@@ -922,20 +1004,25 @@ export default function AdminPage() {
                                         ) : (
                                             <div className="space-y-2">
                                                 {userAudits.map((audit) => (
-                                                    <div key={audit.id} className="flex gap-3 items-center p-2 rounded-lg hover:bg-white/5 border border-transparent hover:border-border-dim transition-all group">
-                                                        <div className="w-10 h-10 rounded bg-black/20 overflow-hidden flex-shrink-0">
+                                                    <div key={audit.id} className="flex gap-3 items-center p-2 rounded-lg bg-background/40 hover:bg-background border border-border-dim transition-all group">
+                                                        <div className="w-12 h-12 rounded bg-black/20 overflow-hidden flex-shrink-0 border border-border-dim/50">
                                                             {audit.image_url && <img src={audit.image_url} className="w-full h-full object-cover" />}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <div className="flex justify-between items-center">
+                                                            <div className="flex justify-between items-center mb-1">
                                                                 <h4 className="text-sm font-bold text-foreground truncate">{audit.ui_title || "Untitled"}</h4>
                                                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${audit.score >= 80 ? 'bg-green-500/10 text-green-400' :
                                                                     audit.score >= 60 ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'
                                                                     }`}>{audit.score}</span>
                                                             </div>
-                                                            <div className="flex justify-between items-center text-[10px] text-muted-text mt-0.5">
+                                                            <div className="flex justify-between items-center text-[10px] text-muted-text">
                                                                 <span>{new Date(audit.created_at).toLocaleDateString()}</span>
-                                                                <span className="capitalize">{audit.framework}</span>
+                                                                <button
+                                                                    onClick={() => setViewingAudit(audit)}
+                                                                    className="flex items-center gap-1 text-accent-primary hover:text-white transition-colors font-bold uppercase tracking-wider bg-accent-primary/5 hover:bg-accent-primary px-2 py-0.5 rounded"
+                                                                >
+                                                                    <Eye className="w-3 h-3" /> View Report
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1097,6 +1184,108 @@ export default function AdminPage() {
                                     </p>
                                 </div>
                             </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* REPORT VIEWER MODAL - Full Screen Overlay */}
+            <AnimatePresence>
+                {viewingAudit && viewingAudit.analysis && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[60] bg-background/95 backdrop-blur-xl overflow-y-auto"
+                    >
+                        <div className="max-w-5xl mx-auto p-6">
+                            <div className="flex justify-between items-center mb-6 sticky top-0 bg-background/80 backdrop-blur-md py-4 z-10 border-b border-border-dim">
+                                <div>
+                                    <h2 className="text-2xl font-black text-foreground">{viewingAudit.ui_title}</h2>
+                                    <p className="text-muted-text font-mono text-xs">RID: {viewingAudit.id}</p>
+                                </div>
+                                <button
+                                    onClick={() => setViewingAudit(null)}
+                                    className="px-4 py-2 bg-foreground text-background font-bold rounded-lg hover:opacity-90"
+                                >
+                                    Close Viewer
+                                </button>
+                            </div>
+
+                            <ReportView
+                                data={viewingAudit.analysis}
+                                uiTitle={viewingAudit.ui_title}
+                                imageUrl={viewingAudit.image_url}
+                            />
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* IP DETAILS MODAL */}
+            <AnimatePresence>
+                {ipModalOpen && (
+                    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setIpModalOpen(false)}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-card border border-border-dim rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="p-4 border-b border-border-dim bg-background/50 flex justify-between items-center">
+                                <h3 className="font-bold text-foreground flex items-center gap-2">
+                                    <Globe className="w-4 h-4 text-accent-primary" />
+                                    IP Location Details
+                                </h3>
+                                <button onClick={() => setIpModalOpen(false)} className="text-muted-text hover:text-foreground">✕</button>
+                            </div>
+
+                            <div className="p-6">
+                                {ipLoading ? (
+                                    <div className="flex flex-col items-center justify-center py-8 gap-3">
+                                        <Loader2 className="w-8 h-8 animate-spin text-accent-primary" />
+                                        <span className="text-xs font-bold text-muted-text uppercase tracking-wider">Locating Signal...</span>
+                                    </div>
+                                ) : ipDetails ? (
+                                    <div className="space-y-4">
+                                        <div className="text-center mb-6">
+                                            <div className="inline-block px-3 py-1 bg-accent-primary/10 text-accent-primary rounded-full font-mono text-xs font-bold mb-2">
+                                                {ipDetails.ip}
+                                            </div>
+                                            <div className="text-2xl font-black text-foreground">
+                                                {ipDetails.city}, {ipDetails.region_code}
+                                            </div>
+                                            <div className="text-sm text-muted-text font-medium">
+                                                {ipDetails.country_name}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3 text-xs">
+                                            <div className="bg-foreground/5 p-3 rounded-lg">
+                                                <div className="text-muted-text font-bold uppercase tracking-wider text-[10px] mb-1">ISP</div>
+                                                <div className="font-medium text-foreground truncate" title={ipDetails.org}>{ipDetails.org || "Unknown"}</div>
+                                            </div>
+                                            <div className="bg-foreground/5 p-3 rounded-lg">
+                                                <div className="text-muted-text font-bold uppercase tracking-wider text-[10px] mb-1">Timezone</div>
+                                                <div className="font-medium text-foreground">{ipDetails.timezone || "UTC"}</div>
+                                            </div>
+                                            <div className="bg-foreground/5 p-3 rounded-lg">
+                                                <div className="text-muted-text font-bold uppercase tracking-wider text-[10px] mb-1">Lat/Long</div>
+                                                <div className="font-medium text-foreground">{ipDetails.latitude}, {ipDetails.longitude}</div>
+                                            </div>
+                                            <div className="bg-foreground/5 p-3 rounded-lg">
+                                                <div className="text-muted-text font-bold uppercase tracking-wider text-[10px] mb-1">Postal</div>
+                                                <div className="font-medium text-foreground">{ipDetails.postal || "N/A"}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 text-muted-text">
+                                        Could not fetch location data.
+                                    </div>
+                                )}
+                            </div>
                         </motion.div>
                     </div>
                 )}

@@ -50,6 +50,7 @@ export async function GET(req: Request) {
                 a.ip_address,
                 a.user_id,
                 COALESCE((a.analysis::json->>'score')::int, 0) as score,
+                a.analysis,
                 u.first_name,
                 u.last_name,
                 u.email
@@ -74,6 +75,7 @@ export async function GET(req: Request) {
                 createdAt: row.created_at,
                 ip: row.ip_address,
                 score: row.score || 0,
+                analysis: row.analysis,
                 isGuest: !row.user_id,
                 user: row.user_id ? {
                     id: row.user_id,

@@ -13,10 +13,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
         }
 
+        const normalizedEmail = email.toLowerCase();
+
         const { rows } = await sql`
-            SELECT id, email, password_hash, first_name, last_name 
+            SELECT id, email, password_hash, first_name, last_name, is_verified 
             FROM users 
-            WHERE email = ${email}
+            WHERE email = ${normalizedEmail}
         `;
 
         if (rows.length === 0) {

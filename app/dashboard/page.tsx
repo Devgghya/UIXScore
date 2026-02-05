@@ -67,12 +67,29 @@ function DashboardContent() {
   // --- AUDIT RESULTS ---
   const [analysisData, setAnalysisData] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [framework, setFramework] = useState("nielsen");
   const [frameworkMenuOpen, setFrameworkMenuOpen] = useState(false);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<HistoryRecord | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const LOADING_MESSAGES = [
+    "Initializing AI analysis... (Cold Start)",
+    "Analyzing visual hierarchy & layout balance...",
+    "Evaluating accessibility compliance (WCAG 2.1)...",
+    "Checking usability heuristics against Nielsen's standards...",
+    "Synthesizing strategic insights from visual data...",
+    "Identifying conversion blockers & trust signals...",
+    "Generating actionable improvements...",
+    "Still cooking... conducting a deep-dive audit...",
+    "Almost there! Polishing the final report...",
+    "Just a little longer... AI is thinking hard...",
+    "Reviewing visual patterns...",
+    "Comparing against best practices...",
+    "Finalizing score calculation..."
+  ];
 
   const isPaid = ["pro", "design", "enterprise", "agency"].includes(plan);
   const freeAuditsLeft = auditLimit === null ? Infinity : Math.max(auditLimit - auditsUsed, 0);
@@ -263,6 +280,7 @@ function DashboardContent() {
     }
 
     setLoading(true);
+    setLoadingMessage("Starting analysis...");
     setAnalysisData(null);
 
     const formData = new FormData();
@@ -278,15 +296,18 @@ function DashboardContent() {
       else files.forEach((file) => formData.append("file", file));
     }
 
-    // Retry logic with exponential backoff
-    const MAX_RETRIES = 3;
-    const RETRY_DELAYS = [0, 2000, 4000]; // 0ms, 2s, 4s
+    // Retry logic with unlimited retries (cap at 60 for sanity ~5 mins)
+    const MAX_RETRIES = 60;
+    const RETRY_DELAY = 5000; // 5s consistent loop
 
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
+        // Update loading message
+        setLoadingMessage(LOADING_MESSAGES[attempt % LOADING_MESSAGES.length]);
+
         // Wait before retry (except first attempt)
         if (attempt > 0) {
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[attempt]));
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
         }
 
         const res = await fetch("/api/audit", { method: "POST", body: formData });
@@ -300,10 +321,10 @@ function DashboardContent() {
         const data = await res.json();
 
         if (!res.ok) {
-          // Retry on server errors or timeouts
+          // Retry on server errors (500, 503, 504) or timeouts
           if (res.status >= 500 && attempt < MAX_RETRIES - 1) {
-            console.log(`Attempt ${attempt + 1} failed, retrying...`);
-            continue; // Retry
+            console.log(`Attempt ${attempt + 1} failed (${res.status}), retrying...`);
+            continue; // Retry silently
           }
           throw new Error(data.error || "Request failed");
         }
@@ -346,12 +367,12 @@ function DashboardContent() {
 
         // If this is the last attempt, show error to user
         if (attempt === MAX_RETRIES - 1) {
-          alert(`Error analyzing: ${error.message || "Unknown error"}. Please try again.`);
+          alert(`Error analyzing: ${error.message || "Unknown error"}. Please try again later.`);
           setLoading(false);
           return;
         }
-        // Otherwise, continue to next retry
-        console.log(`Retrying in ${RETRY_DELAYS[attempt + 1]}ms...`);
+        // Otherwise, continue to next retry silently
+        console.log(`Retrying in ${RETRY_DELAY}ms...`);
       }
     }
 
@@ -611,6 +632,45 @@ function DashboardContent() {
 
         cursorY += cardHeight + 5;
       });
+
+      // --- ANNOTATED SCREENSHOT (Page 2) ---
+      const screenshotEl = document.getElementById("annotated-screenshot-section");
+      if (screenshotEl) {
+        try {
+          doc.addPage();
+
+          // Title
+          doc.setFontSize(16);
+          doc.setTextColor(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b);
+          doc.setFont("helvetica", "bold");
+          doc.text("Visual Analysis", 15, 20);
+
+          // Capture
+          // Wait briefly for any animations to settle or for the element to be ready
+          await new Promise(r => setTimeout(r, 500));
+
+          const shotDataUrl = await toPng(screenshotEl, {
+            backgroundColor: '#ffffff',
+            quality: 0.95,
+            pixelRatio: 2
+          });
+
+          const imgProps = doc.getImageProperties(shotDataUrl);
+          const pdfWidth = pageWidth - 30;
+          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+          // If image is too tall for one page, it will clip, but that's acceptable for now.
+          // Could add logic to split or scale down if pdfHeight > pageHeight - 40
+          let renderHeight = pdfHeight;
+          if (renderHeight > pageHeight - 40) {
+            renderHeight = pageHeight - 40;
+          }
+
+          doc.addImage(shotDataUrl, 'PNG', 15, 30, pdfWidth, renderHeight);
+        } catch (e) {
+          console.error("Screenshot capture for PDF failed", e);
+        }
+      }
 
       // Branding Footer (Only if not Enterprise)
       if (plan !== 'enterprise') {
@@ -936,8 +996,8 @@ function DashboardContent() {
                       )}
                     </AnimatePresence>
                   </div>
-                  <button onClick={handleAudit} disabled={loading} className="group w-full md:w-auto md:min-w-[200px] md:px-10 bg-indigo-700 hover:bg-indigo-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-indigo-700/20 hover:shadow-xl hover:shadow-indigo-600/40 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 py-4 md:py-3">
-                    {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <><span>Run Deep Audit</span><ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" /></>}
+                  <button onClick={handleAudit} disabled={loading} className="group w-full md:w-auto md:min-w-[200px] md:px-10 bg-indigo-700 hover:bg-indigo-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-indigo-700/20 hover:shadow-xl hover:shadow-indigo-600/40 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 py-4 md:py-3 cursor-pointer">
+                    {loading ? <div className="flex items-center gap-2"><Loader2 className="animate-spin w-5 h-5" /><span className="text-xs md:text-sm">{loadingMessage || "Analyzing..."}</span></div> : <><span>Run Deep Audit</span><ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" /></>}
                   </button>
                 </div>
               </div>
@@ -965,7 +1025,7 @@ function DashboardContent() {
                     </div>
 
                     {/* NEW VISUAL REPORT */}
-                    <ReportView data={analysisData} uiTitle={analysisData.ui_title || ""} />
+                    <ReportView data={analysisData} uiTitle={analysisData.ui_title || ""} imageUrl={analysisData.image_url} />
 
                   </motion.div>
                 )}
@@ -1022,23 +1082,11 @@ function DashboardContent() {
                     )}
                   </div>
 
-                  {/* Screenshot Preview */}
-                  {selectedHistoryItem.preview && (
-                    <div className="mb-8">
-                      <h3 className="text-sm font-bold text-slate-400 mb-3">ANALYZED SCREENSHOT</h3>
-                      <div className="bg-[#121214] border border-white/5 rounded-2xl p-4 inline-block">
-                        <img
-                          src={selectedHistoryItem.preview}
-                          alt="Audit Screenshot"
-                          className="max-h-[300px] rounded-lg border border-white/10 object-contain"
-                        />
-                      </div>
-                    </div>
-                  )}
+                  {/* Screenshot now integrated into ReportView as AnnotatedScreenshot */}
 
                   {/* Report */}
                   {selectedHistoryItem.analysis ? (
-                    <ReportView data={selectedHistoryItem.analysis} uiTitle={selectedHistoryItem.ui_title || ""} />
+                    <ReportView data={selectedHistoryItem.analysis} uiTitle={selectedHistoryItem.ui_title || ""} imageUrl={selectedHistoryItem.preview} />
                   ) : (
                     <div className="text-center py-20 border border-dashed border-white/10 rounded-3xl">
                       <p className="text-slate-500">No analysis data available for this audit.</p>

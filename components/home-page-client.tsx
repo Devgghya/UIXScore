@@ -84,7 +84,7 @@ export default function HomePageClient() {
                 <div className="absolute top-0 left-0 right-0 z-50 max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 flex justify-between items-center">
                     <div className="flex items-center gap-2 md:gap-3">
                         <NextImage src="/uixscore-logo.png" alt="UIXScore" width={40} height={40} className="w-8 h-8 md:w-10 md:h-10 rounded-xl object-contain drop-shadow-2xl" priority />
-                        <h1 className="text-xl md:text-2xl font-black text-foreground tracking-tight">UIXScore<span className="text-indigo-500">.</span></h1>
+                        <span className="text-xl md:text-2xl font-black text-foreground tracking-tight">UIXScore<span className="text-indigo-500">.</span></span>
                     </div>
 
                     <div className="flex items-center gap-2 md:gap-4">
@@ -127,14 +127,14 @@ export default function HomePageClient() {
                         </span>
                     </motion.div>
 
-                    <motion.h2
+                    <motion.h1
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
                         className="text-5xl md:text-8xl font-black tracking-tighter mb-8 leading-[0.9] text-transparent bg-clip-text bg-gradient-to-b from-foreground via-foreground to-foreground/40 drop-shadow-sm"
                     >
                         Design Perfect <br /> Experiences.
-                    </motion.h2>
+                    </motion.h1>
 
                     <motion.p
                         initial={{ opacity: 0, y: 20 }}
