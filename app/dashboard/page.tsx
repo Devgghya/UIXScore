@@ -645,6 +645,12 @@ function DashboardContent() {
           doc.setFont("helvetica", "bold");
           doc.text("Visual Analysis", 15, 20);
 
+          // Hide side panel before capture
+          const sidePanel = screenshotEl.querySelector('[data-pdf-hide="true"]');
+          if (sidePanel) {
+            (sidePanel as HTMLElement).style.display = 'none';
+          }
+
           // Capture
           // Wait briefly for any animations to settle or for the element to be ready
           await new Promise(r => setTimeout(r, 500));
@@ -654,6 +660,11 @@ function DashboardContent() {
             quality: 0.95,
             pixelRatio: 2
           });
+
+          // Restore side panel after capture
+          if (sidePanel) {
+            (sidePanel as HTMLElement).style.display = '';
+          }
 
           const imgProps = doc.getImageProperties(shotDataUrl);
           const pdfWidth = pageWidth - 30;

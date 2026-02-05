@@ -222,6 +222,7 @@ export default function AnnotatedScreenshot({
                 {/* Side Panel for Issue Details */}
                 <div
                     ref={cardPanelRef}
+                    data-pdf-hide="true"
                     className="lg:w-80 w-full border-t lg:border-t-0 lg:border-l border-border-dim bg-foreground/[0.02] p-4 flex flex-col justify-center min-h-[200px]"
                 >
                     <AnimatePresence mode="wait">
