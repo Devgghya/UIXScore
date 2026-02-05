@@ -379,7 +379,8 @@ export default function ComparePageClient() {
     }
 
     // --- PAYWALL / GATING ---
-    const isAllowed = ["pro", "design", "enterprise", "agency", "admin"].includes(plan);
+    // --- PAYWALL / GATING ---
+    const isAllowed = ["pro", "enterprise", "admin", "test"].includes(plan);
 
     if (!isAllowed) {
         return (
@@ -403,7 +404,7 @@ export default function ComparePageClient() {
                         <p className="text-xs font-bold text-muted-text mb-2 uppercase tracking-wider">Available on</p>
                         <div className="flex items-center justify-center gap-2">
                             <span className="px-3 py-1 bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 rounded-lg text-sm font-bold">Pro Analyst</span>
-                            <span className="px-3 py-1 bg-purple-500/10 text-purple-500 border border-purple-500/20 rounded-lg text-sm font-bold">Design Studio</span>
+                            <span className="px-3 py-1 bg-purple-500/10 text-purple-500 border border-purple-500/20 rounded-lg text-sm font-bold">Enterprise</span>
                         </div>
                     </div>
 

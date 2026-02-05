@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 
 interface UsageData {
-    plan: "guest" | "free" | "pro" | "design" | "enterprise";
+    plan: "guest" | "free" | "pro" | "enterprise";
     audits_used: number;
     limit: number | null;
     token_limit: number;
@@ -55,7 +55,6 @@ export default function PlanPage() {
 
     const planName = usage?.plan ? usage.plan.charAt(0).toUpperCase() + usage.plan.slice(1) : "Free";
     const isPro = usage?.plan === "pro";
-    const isStudio = usage?.plan === "design"; // 'Design Studio' plan
     const isEnterprise = usage?.plan === "enterprise";
 
     // Calculate progress
@@ -98,15 +97,14 @@ export default function PlanPage() {
                                     <h2 className="text-4xl font-black text-white flex items-center gap-3">
                                         {planName}
                                         {isPro && <Zap className="w-6 h-6 text-indigo-400" />}
-                                        {isStudio && <SparklesIcon className="w-6 h-6 text-purple-400" />}
                                         {isEnterprise && <Shield className="w-6 h-6 text-emerald-400" />}
                                     </h2>
                                 </div>
-                                <div className={`px-4 py-1.5 rounded-full text-xs font-bold border ${isPro || isStudio || isEnterprise
+                                <div className={`px-4 py-1.5 rounded-full text-xs font-bold border ${isPro || isEnterprise
                                     ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                                     : "bg-slate-800 text-slate-400 border-slate-700"
                                     }`}>
-                                    {isPro || isStudio || isEnterprise ? "Active" : "Free Tier"}
+                                    {isPro || isEnterprise ? "Active" : "Free Tier"}
                                 </div>
                             </div>
 
@@ -122,7 +120,7 @@ export default function PlanPage() {
                                     href="/dashboard?tab=pricing"
                                     className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-600/20"
                                 >
-                                    {isPro || isStudio ? "Manage Subscription" : "Upgrade Plan"}
+                                    {isPro || isEnterprise ? "Manage Subscription" : "Upgrade Plan"}
                                 </Link>
                             </div>
                         </div>
