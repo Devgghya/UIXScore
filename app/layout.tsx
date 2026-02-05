@@ -2,7 +2,7 @@ import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider } from '@/components/auth-provider';
 import type { Metadata } from "next";
-import { GoogleAdsense } from "@/components/google-adsense";
+
 
 export const metadata: Metadata = {
   title: "UIXScore",
@@ -13,10 +13,19 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const adClientId = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID || "";
+  const cleanId = adClientId.replace("pub-", "");
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <GoogleAdsense pId={process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID || ""} />
+        {cleanId && (
+          <script
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-${cleanId}`}
+            crossOrigin="anonymous"
+          ></script>
+        )}
       </head>
       <body>
         <ThemeProvider

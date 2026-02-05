@@ -26,9 +26,9 @@ const PLANS: Plan[] = [
     {
         id: "free",
         name: "Free",
-        price: "$0",
-        priceInr: "₹0",
-        period: "/forever",
+        price: "Free",
+        priceInr: "Free",
+        period: "",
         features: [
             "Unlimited Audits",
             "5 PDF Downloads per month",
@@ -45,12 +45,14 @@ const PLANS: Plan[] = [
         priceInr: "₹99",
         period: "/month",
         features: [
+            "Competitor Benchmarking",
+            "Advanced Site Crawler",
+            "Accessibility Personas",
             "Unlimited PDF Downloads",
             "Unlimited History Storage",
             "Priority Processing",
             "Advanced Analytics",
             "Team Sharing",
-            "Export in Multiple Formats",
         ],
         recommended: true,
         cta: "Upgrade to Pro",
@@ -437,7 +439,7 @@ export function PricingPlans({
                             {plan.period && (
                                 <div className="flex flex-col">
                                     <span className="text-muted-text font-medium text-sm leading-none">
-                                        {billingCycle === "annual" ? "/mo" : "/month"}
+                                        {plan.id === "free" ? "" : (billingCycle === "annual" ? "/mo" : "/month")}
                                     </span>
                                     {billingCycle === "annual" && plan.id !== "free" && plan.id !== "enterprise" && (
                                         <span className="text-[10px] text-accent-primary font-bold mt-1 uppercase tracking-tighter">
