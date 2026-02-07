@@ -459,9 +459,11 @@ function DashboardContent() {
 
       // ... (Rest of the PDF generation)
 
-      // Score Card (Top Right)
+      // Score Card (Top Right) - Overall/Average Score
       const score = Math.round(dataToUse.score || 0);
       const scoreColor = score >= 80 ? [16, 185, 129] : score >= 60 ? [245, 158, 11] : [239, 68, 68];
+      const imagesForScore = dataToUse.images || [];
+      const isMultiImage = imagesForScore.length > 1;
 
       doc.setFillColor(CARD.r, CARD.g, CARD.b);
       doc.setDrawColor(scoreColor[0], scoreColor[1], scoreColor[2]);
@@ -470,7 +472,7 @@ function DashboardContent() {
 
       doc.setFontSize(8);
       doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
-      doc.text("UX SCORE", pageWidth - 35, 22, { align: "center" });
+      doc.text(isMultiImage ? "AVG UX SCORE" : "UX SCORE", pageWidth - 35, 22, { align: "center" });
 
       doc.setFontSize(24);
       doc.setTextColor(scoreColor[0], scoreColor[1], scoreColor[2]);
@@ -479,6 +481,33 @@ function DashboardContent() {
       doc.setFontSize(6);
       doc.setTextColor(150, 150, 150);
       doc.text("OUT OF 100", pageWidth - 35, 39, { align: "center" });
+
+      // Per-Image Score Cards (if multiple images)
+      if (isMultiImage) {
+        let scoreCardY = 48;
+        doc.setFontSize(8);
+        doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
+        doc.text("Individual Scores:", pageWidth - 55, scoreCardY);
+        scoreCardY += 5;
+
+        imagesForScore.slice(0, 4).forEach((img: any, idx: number) => {
+          const imgMetrics = img.ux_metrics || {};
+          const metricValues = Object.values(imgMetrics) as number[];
+          const imgAvg = metricValues.length > 0
+            ? Math.round(metricValues.reduce((a, b) => a + b, 0) / metricValues.length * 10)
+            : 70;
+          const imgColor = imgAvg >= 80 ? [16, 185, 129] : imgAvg >= 60 ? [245, 158, 11] : [239, 68, 68];
+
+          doc.setFontSize(7);
+          doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
+          doc.text(`#${idx + 1}:`, pageWidth - 55, scoreCardY);
+          doc.setTextColor(imgColor[0], imgColor[1], imgColor[2]);
+          doc.setFont("helvetica", "bold");
+          doc.text(`${imgAvg}`, pageWidth - 45, scoreCardY);
+          doc.setFont("helvetica", "normal");
+          scoreCardY += 4;
+        });
+      }
 
 
       // --- HYBRID CONTENT: RADAR CHART ---
@@ -495,17 +524,45 @@ function DashboardContent() {
             }
           });
 
-          // Draw Chart Card Background
+          // Draw Chart Card Background (extended to fit metrics)
           doc.setFillColor(CARD.r, CARD.g, CARD.b);
-          roundedRect(15, 80, 90, 80); // Moved from 60 to 80
+          roundedRect(15, 80, 90, 80);
 
           // Title
           doc.setFontSize(12);
           doc.setTextColor(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b);
           doc.text("Performance Metrics", 20, 90);
 
-          // Embed Image
-          doc.addImage(chartDataUrl, 'PNG', 18, 95, 84, 60);
+          // Embed Chart Image (smaller to make room for metrics)
+          doc.addImage(chartDataUrl, 'PNG', 18, 93, 50, 40);
+
+          // Add metric values as a table next to the chart
+          const metrics = dataToUse.ux_metrics || {};
+          const metricLabels = ['clarity', 'efficiency', 'consistency', 'aesthetics', 'accessibility'];
+          let metricY = 98;
+
+          doc.setFontSize(8);
+          doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
+          doc.text("Score", 93, 93, { align: "right" });
+
+          metricLabels.forEach((key) => {
+            const val = metrics[key] || 0;
+            const displayVal = Math.round(val * 10); // Convert 0-10 to 0-100
+            const valColor = displayVal >= 70 ? [16, 185, 129] : displayVal >= 50 ? [245, 158, 11] : [239, 68, 68];
+
+            // Label
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8);
+            doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
+            doc.text(key.charAt(0).toUpperCase() + key.slice(1), 70, metricY);
+
+            // Value (with color)
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(valColor[0], valColor[1], valColor[2]);
+            doc.text(`${displayVal}`, 93, metricY, { align: "right" });
+
+            metricY += 7;
+          });
 
         } catch (e) {
           console.error("Chart capture failed", e);
@@ -559,127 +616,299 @@ function DashboardContent() {
 
       let cursorY = 185; // Moved from 165 to 185
 
-      (dataToUse.audit || []).forEach((item: any, idx: number) => {
-        // 1. Calculate Text Dimensions
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "bold");
-        const titleLines = doc.splitTextToSize(item.title || "Issue", pageWidth - 70);
-        const titleHeight = titleLines.length * 5;
+      // Check if we have per-image data
+      const imagesData = dataToUse.images || [];
+      const hasMultipleImages = imagesData.length > 1;
 
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "normal");
-        const descLines = doc.splitTextToSize(item.issue || "No description", pageWidth - 50);
-        const descHeight = descLines.length * 4;
-
-        const solLines = doc.splitTextToSize(item.solution || "No suggestion", pageWidth - 70);
-        const solHeight = solLines.length * 4;
-
-        // Padding & Spacing
-        // Top: 10, Gap: 8, Gap: 10, Bottom: 10
-        const cardHeight = 10 + titleHeight + 8 + descHeight + 10 + solHeight + 10;
-
-        // 2. Check Page Break
-        if (cursorY + cardHeight > pageHeight - 20) {
-          doc.addPage();
-          doc.setFillColor(BG.r, BG.g, BG.b);
-          doc.rect(0, 0, pageWidth, pageHeight, "F");
-          cursorY = 20;
-        }
-
-        // 3. Card Background
-        doc.setFillColor(CARD.r, CARD.g, CARD.b);
-        roundedRect(15, cursorY, pageWidth - 30, cardHeight);
-
-        // 4. Content
-        let contentY = cursorY + 10;
-
-        // Number
-        doc.setFontSize(10);
-        doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
-        doc.text(`#${idx + 1}`, 20, contentY);
-
-        // Title
-        doc.setFontSize(11);
-        doc.setTextColor(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b);
-        doc.setFont("helvetica", "bold");
-        doc.text(titleLines, 30, contentY); // Title (array of lines)
-
-        // Severity Pill
-        const sev = (item.severity || "LOW").toUpperCase();
-        const sevColor = sev === "CRITICAL" ? [239, 68, 68] : sev === "HIGH" ? [245, 158, 11] : [59, 130, 246];
-        doc.setFillColor(sevColor[0], sevColor[1], sevColor[2]);
-        doc.roundedRect(pageWidth - 35, cursorY + 5, 15, 5, 1, 1, "F");
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(6);
-        doc.text(sev, pageWidth - 27.5, cursorY + 8.5, { align: "center" });
-
-        contentY += titleHeight + 8;
-
-        // Description
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
-        doc.text(descLines, 30, contentY);
-
-        contentY += descHeight + 10;
-
-        // Recommendation (Lightbulb)
-        doc.setTextColor(202, 138, 4); // Darker yellow for accessibility
-        doc.text("Suggestion:", 30, contentY);
-        doc.setTextColor(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b);
-        // Indent suggestion text
-        doc.text(solLines, 52, contentY);
-
-        cursorY += cardHeight + 5;
-      });
-
-      // --- ANNOTATED SCREENSHOT (Page 2) ---
-      const screenshotEl = document.getElementById("annotated-screenshot-section");
-      if (screenshotEl) {
-        try {
-          doc.addPage();
-
-          // Title
-          doc.setFontSize(16);
-          doc.setTextColor(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b);
-          doc.setFont("helvetica", "bold");
-          doc.text("Visual Analysis", 15, 20);
-
-          // Hide side panel before capture
-          const sidePanel = screenshotEl.querySelector('[data-pdf-hide="true"]');
-          if (sidePanel) {
-            (sidePanel as HTMLElement).style.display = 'none';
+      if (hasMultipleImages) {
+        // Multi-image report: iterate through each image
+        imagesData.forEach((imgData: any, imgIdx: number) => {
+          // Check page break before image section header
+          if (cursorY > pageHeight - 60) {
+            doc.addPage();
+            doc.setFillColor(BG.r, BG.g, BG.b);
+            doc.rect(0, 0, pageWidth, pageHeight, "F");
+            cursorY = 20;
           }
 
-          // Capture
-          // Wait briefly for any animations to settle or for the element to be ready
-          await new Promise(r => setTimeout(r, 500));
+          // Image Section Header
+          doc.setFillColor(ACCENT.r, ACCENT.g, ACCENT.b);
+          doc.roundedRect(15, cursorY, pageWidth - 30, 10, 2, 2, "F");
+          doc.setFontSize(11);
+          doc.setTextColor(255, 255, 255);
+          doc.setFont("helvetica", "bold");
+          doc.text(`Screenshot ${imgIdx + 1}: ${imgData.ui_title || 'Analysis'}`, 20, cursorY + 7);
 
-          const shotDataUrl = await toPng(screenshotEl, {
-            backgroundColor: '#ffffff',
-            quality: 0.95,
-            pixelRatio: 2
+          // Show per-image score if available
+          const imgMetrics = imgData.ux_metrics || {};
+          const avgScore = Object.values(imgMetrics).reduce((a: any, b: any) => a + b, 0) as number / Math.max(Object.keys(imgMetrics).length, 1);
+          if (avgScore > 0) {
+            doc.setFontSize(9);
+            doc.text(`Avg: ${Math.round(avgScore * 10)}/100`, pageWidth - 35, cursorY + 7);
+          }
+
+          cursorY += 15;
+
+          // Render findings for this image
+          (imgData.audit || []).forEach((item: any, idx: number) => {
+            // 1. Calculate Text Dimensions
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "bold");
+            const titleLines = doc.splitTextToSize(item.title || "Issue", pageWidth - 70);
+            const titleHeight = titleLines.length * 5;
+
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "normal");
+            const descLines = doc.splitTextToSize(item.issue || "No description", pageWidth - 50);
+            const descHeight = descLines.length * 4;
+
+            const solLines = doc.splitTextToSize(item.solution || "No suggestion", pageWidth - 70);
+            const solHeight = solLines.length * 4;
+
+            // Padding & Spacing
+            const cardHeight = 10 + titleHeight + 8 + descHeight + 10 + solHeight + 10;
+
+            // 2. Check Page Break
+            if (cursorY + cardHeight > pageHeight - 20) {
+              doc.addPage();
+              doc.setFillColor(BG.r, BG.g, BG.b);
+              doc.rect(0, 0, pageWidth, pageHeight, "F");
+              cursorY = 20;
+            }
+
+            // 3. Card Background
+            doc.setFillColor(CARD.r, CARD.g, CARD.b);
+            roundedRect(15, cursorY, pageWidth - 30, cardHeight);
+
+            // 4. Content
+            let contentY = cursorY + 10;
+
+            // Number
+            doc.setFontSize(10);
+            doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
+            doc.text(`#${idx + 1}`, 20, contentY);
+
+            // Title
+            doc.setFontSize(11);
+            doc.setTextColor(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b);
+            doc.setFont("helvetica", "bold");
+            doc.text(titleLines, 30, contentY);
+
+            // Severity Pill
+            const sev = (item.severity || "LOW").toUpperCase();
+            const sevColor = sev === "CRITICAL" ? [239, 68, 68] : sev === "HIGH" ? [245, 158, 11] : [59, 130, 246];
+            doc.setFillColor(sevColor[0], sevColor[1], sevColor[2]);
+            doc.roundedRect(pageWidth - 35, cursorY + 5, 15, 5, 1, 1, "F");
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(6);
+            doc.text(sev, pageWidth - 27.5, cursorY + 8.5, { align: "center" });
+
+            contentY += titleHeight + 8;
+
+            // Description
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
+            doc.text(descLines, 30, contentY);
+
+            contentY += descHeight + 10;
+
+            // Recommendation
+            doc.setTextColor(202, 138, 4);
+            doc.text("Suggestion:", 30, contentY);
+            doc.setTextColor(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b);
+            doc.text(solLines, 52, contentY);
+
+            cursorY += cardHeight + 5;
           });
 
-          // Restore side panel after capture
-          if (sidePanel) {
-            (sidePanel as HTMLElement).style.display = '';
+          cursorY += 10; // Extra spacing between images
+        });
+      } else {
+        // Single image or legacy: use combined audit array
+        (dataToUse.audit || []).forEach((item: any, idx: number) => {
+          // 1. Calculate Text Dimensions
+          doc.setFontSize(11);
+          doc.setFont("helvetica", "bold");
+          const titleLines = doc.splitTextToSize(item.title || "Issue", pageWidth - 70);
+          const titleHeight = titleLines.length * 5;
+
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "normal");
+          const descLines = doc.splitTextToSize(item.issue || "No description", pageWidth - 50);
+          const descHeight = descLines.length * 4;
+
+          const solLines = doc.splitTextToSize(item.solution || "No suggestion", pageWidth - 70);
+          const solHeight = solLines.length * 4;
+
+          // Padding & Spacing
+          const cardHeight = 10 + titleHeight + 8 + descHeight + 10 + solHeight + 10;
+
+          // 2. Check Page Break
+          if (cursorY + cardHeight > pageHeight - 20) {
+            doc.addPage();
+            doc.setFillColor(BG.r, BG.g, BG.b);
+            doc.rect(0, 0, pageWidth, pageHeight, "F");
+            cursorY = 20;
           }
 
-          const imgProps = doc.getImageProperties(shotDataUrl);
-          const pdfWidth = pageWidth - 30;
-          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+          // 3. Card Background
+          doc.setFillColor(CARD.r, CARD.g, CARD.b);
+          roundedRect(15, cursorY, pageWidth - 30, cardHeight);
 
-          // If image is too tall for one page, it will clip, but that's acceptable for now.
-          // Could add logic to split or scale down if pdfHeight > pageHeight - 40
-          let renderHeight = pdfHeight;
-          if (renderHeight > pageHeight - 40) {
-            renderHeight = pageHeight - 40;
+          // 4. Content
+          let contentY = cursorY + 10;
+
+          // Number
+          doc.setFontSize(10);
+          doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
+          doc.text(`#${idx + 1}`, 20, contentY);
+
+          // Title
+          doc.setFontSize(11);
+          doc.setTextColor(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b);
+          doc.setFont("helvetica", "bold");
+          doc.text(titleLines, 30, contentY);
+
+          // Severity Pill
+          const sev = (item.severity || "LOW").toUpperCase();
+          const sevColor = sev === "CRITICAL" ? [239, 68, 68] : sev === "HIGH" ? [245, 158, 11] : [59, 130, 246];
+          doc.setFillColor(sevColor[0], sevColor[1], sevColor[2]);
+          doc.roundedRect(pageWidth - 35, cursorY + 5, 15, 5, 1, 1, "F");
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(6);
+          doc.text(sev, pageWidth - 27.5, cursorY + 8.5, { align: "center" });
+
+          contentY += titleHeight + 8;
+
+          // Description
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
+          doc.text(descLines, 30, contentY);
+
+          contentY += descHeight + 10;
+
+          // Recommendation
+          doc.setTextColor(202, 138, 4);
+          doc.text("Suggestion:", 30, contentY);
+          doc.setTextColor(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b);
+          doc.text(solLines, 52, contentY);
+
+          cursorY += cardHeight + 5;
+        });
+      }
+
+      // --- ANNOTATED SCREENSHOTS (All images) ---
+      const allImageUrls = previews.length ? previews : (dataToUse.image_url ? [dataToUse.image_url] : []);
+      const perImageData = dataToUse.images || [];
+
+      if (allImageUrls.length > 0) {
+        for (let imgIdx = 0; imgIdx < allImageUrls.length; imgIdx++) {
+          try {
+            doc.addPage();
+            doc.setFillColor(BG.r, BG.g, BG.b);
+            doc.rect(0, 0, pageWidth, pageHeight, "F");
+
+            // Title with screenshot number
+            doc.setFontSize(16);
+            doc.setTextColor(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b);
+            doc.setFont("helvetica", "bold");
+            const imgTitle = perImageData[imgIdx]?.ui_title || `Screenshot ${imgIdx + 1}`;
+            doc.text(`Visual Analysis: ${imgTitle}`, 15, 20);
+
+            // Subtitle showing which screenshot
+            doc.setFontSize(10);
+            doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
+            doc.text(`Screenshot ${imgIdx + 1} of ${allImageUrls.length}`, 15, 28);
+
+            // Load and embed the image
+            const imageUrl = allImageUrls[imgIdx];
+            if (imageUrl) {
+              // Create image element and load
+              const img = new Image();
+              img.crossOrigin = "anonymous";
+              img.src = imageUrl;
+
+              await new Promise<void>((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = () => reject(new Error('Image load failed'));
+                setTimeout(() => resolve(), 3000); // Timeout fallback
+              });
+
+              // Calculate dimensions
+              const maxWidth = pageWidth - 30;
+              const maxHeight = pageHeight - 50;
+              let imgWidth = img.width;
+              let imgHeight = img.height;
+
+              // Scale to fit
+              if (imgWidth > maxWidth) {
+                const scale = maxWidth / imgWidth;
+                imgWidth = maxWidth;
+                imgHeight = imgHeight * scale;
+              }
+              if (imgHeight > maxHeight) {
+                const scale = maxHeight / imgHeight;
+                imgHeight = maxHeight;
+                imgWidth = imgWidth * scale;
+              }
+
+              doc.addImage(img, 'PNG', 15, 35, imgWidth, imgHeight);
+
+              // Show findings count for this image
+              const imgFindings = perImageData[imgIdx]?.audit?.length || 0;
+              if (imgFindings > 0) {
+                doc.setFontSize(9);
+                doc.setTextColor(ACCENT.r, ACCENT.g, ACCENT.b);
+                doc.text(`${imgFindings} finding(s) identified`, pageWidth - 15, 28, { align: "right" });
+              }
+            }
+          } catch (e) {
+            console.error(`Screenshot ${imgIdx + 1} capture for PDF failed`, e);
           }
+        }
+      } else {
+        // Fallback: try to capture the DOM element if no image URLs available
+        const screenshotEl = document.getElementById("annotated-screenshot-section");
+        if (screenshotEl) {
+          try {
+            doc.addPage();
+            doc.setFontSize(16);
+            doc.setTextColor(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b);
+            doc.setFont("helvetica", "bold");
+            doc.text("Visual Analysis", 15, 20);
 
-          doc.addImage(shotDataUrl, 'PNG', 15, 30, pdfWidth, renderHeight);
-        } catch (e) {
-          console.error("Screenshot capture for PDF failed", e);
+            const sidePanel = screenshotEl.querySelector('[data-pdf-hide="true"]');
+            if (sidePanel) {
+              (sidePanel as HTMLElement).style.display = 'none';
+            }
+
+            await new Promise(r => setTimeout(r, 500));
+
+            const shotDataUrl = await toPng(screenshotEl, {
+              backgroundColor: '#ffffff',
+              quality: 0.95,
+              pixelRatio: 2
+            });
+
+            if (sidePanel) {
+              (sidePanel as HTMLElement).style.display = '';
+            }
+
+            const imgProps = doc.getImageProperties(shotDataUrl);
+            const pdfWidth = pageWidth - 30;
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+            let renderHeight = pdfHeight;
+            if (renderHeight > pageHeight - 40) {
+              renderHeight = pageHeight - 40;
+            }
+
+            doc.addImage(shotDataUrl, 'PNG', 15, 30, pdfWidth, renderHeight);
+          } catch (e) {
+            console.error("Screenshot capture for PDF failed", e);
+          }
         }
       }
 
@@ -1036,7 +1265,7 @@ function DashboardContent() {
                     </div>
 
                     {/* NEW VISUAL REPORT */}
-                    <ReportView data={analysisData} uiTitle={analysisData.ui_title || ""} imageUrl={analysisData.image_url} />
+                    <ReportView data={analysisData} uiTitle={analysisData.ui_title || ""} imageUrls={previews.length ? previews : (analysisData.image_url ? [analysisData.image_url] : [])} />
 
                   </motion.div>
                 )}

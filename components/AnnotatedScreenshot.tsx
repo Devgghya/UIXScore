@@ -65,11 +65,25 @@ export default function AnnotatedScreenshot({
     const getPosition = (issue: AuditIssue, index: number) => {
         if (issue.coordinates) {
             try {
-                const [x, y] = issue.coordinates.split(',').map(s => parseFloat(s.trim()));
-                if (!isNaN(x) && !isNaN(y)) {
-                    return { x, y };
+                // Clean the coordinates string - remove parentheses, extra spaces, and non-numeric characters except comma and period
+                const cleanCoords = issue.coordinates
+                    .replace(/[()]/g, '')    // Remove parentheses
+                    .replace(/\s+/g, '')     // Remove all spaces
+                    .split(',')              // Split by comma
+                    .map(s => parseFloat(s.trim()));
+
+                if (cleanCoords.length >= 2) {
+                    let [x, y] = cleanCoords;
+                    if (!isNaN(x) && !isNaN(y)) {
+                        // Clamp values to valid range (5-95 to keep markers within visible area)
+                        x = Math.max(5, Math.min(95, x));
+                        y = Math.max(5, Math.min(95, y));
+                        return { x, y };
+                    }
                 }
-            } catch (e) { }
+            } catch (e) {
+                console.log('Coordinate parsing failed:', issue.coordinates);
+            }
         }
         return getFallbackPosition(index, issues.length);
     };

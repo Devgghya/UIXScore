@@ -7,23 +7,31 @@ import {
     Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
     BarChart, Bar, XAxis, YAxis, Tooltip, Cell
 } from "recharts";
-import { AlertCircle, CheckCircle, Lightbulb, Zap, Lock, Image as ImageIcon } from "lucide-react";
+import { AlertCircle, CheckCircle, Lightbulb, Zap, Lock, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import AnnotatedScreenshot from "@/components/AnnotatedScreenshot";
 
 export interface ReportViewProps {
     data: any; // The full JSON response from the API
     uiTitle: string;
-    imageUrl?: string; // The screenshot URL for annotation
+    imageUrl?: string; // Single screenshot URL (legacy support)
+    imageUrls?: string[]; // Multiple screenshot URLs
 }
 
-export default function ReportView({ data, uiTitle, imageUrl }: ReportViewProps) {
+export default function ReportView({ data, uiTitle, imageUrl, imageUrls }: ReportViewProps) {
     const [hoveredIssueIndex, setHoveredIssueIndex] = useState<number | null>(null);
     const [selectedMarkerIndex, setSelectedMarkerIndex] = useState<number | null>(null);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+    // Merge imageUrls with legacy imageUrl support
+    const allImages = imageUrls?.length ? imageUrls : (imageUrl ? [imageUrl] : []);
+    const activeImageUrl = allImages[currentImageIndex] || allImages[0];
 
     if (!data) return null;
 
-    // Transform metrics for Radar Chart
-    const metrics = data.ux_metrics || {};
+
+    // Use per-image metrics if available, otherwise fall back to global metrics
+    const perImageMetrics = data.images?.[currentImageIndex]?.ux_metrics;
+    const metrics = perImageMetrics || data.ux_metrics || {};
     const radarData = Object.keys(metrics).map(key => ({
         subject: key.charAt(0).toUpperCase() + key.slice(1),
         A: metrics[key],
@@ -31,7 +39,10 @@ export default function ReportView({ data, uiTitle, imageUrl }: ReportViewProps)
     }));
 
     const score = data.score || 0;
-    const auditIssues = data.audit || [];
+
+    // Use per-image audits if available, otherwise fall back to combined audits
+    const perImageAudits = data.images?.[currentImageIndex]?.audit;
+    const auditIssues = perImageAudits || data.audit || [];
 
     // Color determination for score
     const scoreColor = score >= 80 ? "text-emerald-600 dark:text-emerald-400" : score >= 60 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
@@ -84,17 +95,83 @@ export default function ReportView({ data, uiTitle, imageUrl }: ReportViewProps)
 
                 {/* SCORE CARD */}
                 <div className={`flex flex-col items-center justify-center p-6 rounded-2xl border ${scoreBg} w-full md:min-w-[180px]`}>
-                    <span className="text-xs md:text-sm font-bold opacity-80 uppercase tracking-widest mb-1">UX Score</span>
+                    <span className="text-xs md:text-sm font-bold opacity-80 uppercase tracking-widest mb-1">
+                        {(data.images?.length || 0) > 1 ? "Avg UX Score" : "UX Score"}
+                    </span>
                     <span className={`text-5xl md:text-6xl font-black ${scoreColor}`}>{score}</span>
                     <span className="text-[10px] md:text-xs font-bold mt-2 opacity-60">OUT OF 100</span>
+
+                    {/* Per-Image Scores */}
+                    {(data.images?.length || 0) > 1 && (
+                        <div className="mt-4 pt-4 border-t border-current/20 w-full">
+                            <span className="text-[10px] font-bold uppercase tracking-wider opacity-60 block text-center mb-2">
+                                Individual Scores
+                            </span>
+                            <div className="flex flex-wrap justify-center gap-2">
+                                {data.images.slice(0, 5).map((img: any, idx: number) => {
+                                    const imgMetrics = img.ux_metrics || {};
+                                    const metricValues = Object.values(imgMetrics) as number[];
+                                    const imgScore = metricValues.length > 0
+                                        ? Math.round(metricValues.reduce((a, b) => a + b, 0) / metricValues.length * 10)
+                                        : 70;
+                                    const imgScoreColor = imgScore >= 80
+                                        ? "bg-emerald-500 text-white"
+                                        : imgScore >= 60
+                                            ? "bg-amber-500 text-white"
+                                            : "bg-red-500 text-white";
+                                    const isActive = currentImageIndex === idx;
+
+                                    return (
+                                        <button
+                                            key={idx}
+                                            onClick={() => setCurrentImageIndex(idx)}
+                                            className={`
+                                                flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-all
+                                                ${imgScoreColor}
+                                                ${isActive ? "ring-2 ring-offset-2 ring-current scale-110" : "opacity-80 hover:opacity-100"}
+                                            `}
+                                            title={`Screenshot ${idx + 1}: ${img.ui_title || 'Analysis'}`}
+                                        >
+                                            <span className="opacity-70">#{idx + 1}:</span>
+                                            <span>{imgScore}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
             {/* ANNOTATED SCREENSHOT SECTION */}
-            {imageUrl && auditIssues.length > 0 && (
+            {activeImageUrl && auditIssues.length > 0 && (
                 <div id="annotated-screenshot-section">
+                    {/* Image Navigation */}
+                    {allImages.length > 1 && (
+                        <div className="flex items-center justify-between mb-4 px-4 py-2 bg-card border border-border-dim rounded-xl">
+                            <button
+                                onClick={() => setCurrentImageIndex(prev => Math.max(0, prev - 1))}
+                                disabled={currentImageIndex === 0}
+                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-foreground/5 hover:bg-foreground/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm font-medium"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                                Prev
+                            </button>
+                            <span className="text-sm text-muted-text font-medium">
+                                Screenshot {currentImageIndex + 1} of {allImages.length}
+                            </span>
+                            <button
+                                onClick={() => setCurrentImageIndex(prev => Math.min(allImages.length - 1, prev + 1))}
+                                disabled={currentImageIndex === allImages.length - 1}
+                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-foreground/5 hover:bg-foreground/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm font-medium"
+                            >
+                                Next
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
                     <AnnotatedScreenshot
-                        imageUrl={imageUrl}
+                        imageUrl={activeImageUrl}
                         issues={auditIssues}
                         hoveredIssueIndex={hoveredIssueIndex}
                         selectedMarkerIndex={selectedMarkerIndex}
@@ -115,6 +192,20 @@ export default function ReportView({ data, uiTitle, imageUrl }: ReportViewProps)
                                 <PolarGrid stroke="#94a3b8" strokeOpacity={0.2} />
                                 <PolarAngleAxis dataKey="subject" tick={{ fill: 'currentColor', fontSize: 12, className: 'text-muted-text font-medium' }} />
                                 <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} axisLine={false} />
+                                <Tooltip
+                                    content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                            const data = payload[0].payload;
+                                            return (
+                                                <div className="bg-card border border-border-dim rounded-lg px-3 py-2 shadow-lg">
+                                                    <p className="text-sm font-bold text-foreground">{data.subject}</p>
+                                                    <p className="text-xs text-accent-primary font-medium">{data.A}/10</p>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}
+                                />
                                 <Radar
                                     name="UX Metrics"
                                     dataKey="A"
@@ -228,13 +319,26 @@ export default function ReportView({ data, uiTitle, imageUrl }: ReportViewProps)
 
                                 <div className="flex-1">
                                     <div className="flex justify-between items-start mb-3">
-                                        <h4 className="font-bold text-lg text-foreground">{item.title}</h4>
-                                        <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider ${item.severity === 'critical' ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' :
+                                        <div>
+                                            <h4 className="font-bold text-lg text-foreground">{item.title}</h4>
+                                            {item.heuristic && (
+                                                <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-accent-primary/10 text-accent-primary border border-accent-primary/20">
+                                                    Violates: {item.heuristic}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider shrink-0 ml-2 ${item.severity === 'critical' ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' :
                                             item.severity === 'high' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' :
                                                 'bg-accent-primary text-white shadow-lg shadow-accent-primary/20'
                                             }`}>{item.severity}</span>
                                     </div>
-                                    <p className="text-muted-text text-sm mb-4 leading-relaxed">{item.issue || item.critique}</p>
+                                    <p className="text-muted-text text-sm mb-3 leading-relaxed">{item.issue || item.critique}</p>
+                                    {item.impact && (
+                                        <div className="flex items-center gap-2 mb-3 text-xs text-orange-600 dark:text-orange-400 bg-orange-500/10 px-3 py-1.5 rounded-lg border border-orange-500/20 w-fit">
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            <span className="font-medium">Impact: {item.impact}</span>
+                                        </div>
+                                    )}
                                     <div className="flex gap-3 items-start bg-foreground/[0.02] p-4 rounded-lg border border-border-dim">
                                         <Lightbulb className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                                         <p className="text-sm text-foreground/90 font-medium italic">{item.solution || item.fix}</p>

@@ -220,101 +220,169 @@ export async function POST(req) {
       return NextResponse.json({ error: "No content to analyze", error_code: "NO_INPUT" }, { status: 400 });
     }
 
-    // 2. AI Analysis
+    // 2. AI Analysis - BATCH PROCESS EACH IMAGE SEPARATELY
     if (!GROQ_API_KEY || !groq) {
       return NextResponse.json({ error: "Groq API key missing", error_code: "MISSING_GROQ" }, { status: 500 });
     }
 
-    const promptText = `
-      You are a World-Class UX Consultant & Information Designer. 
-      You possess the product vision of Steve Jobs and the usability rigor of Jakob Nielsen.
-      
-      Analyze the provided UI screenshot(s) using the **${framework}** framework.
-      ${mode === 'accessibility' ? 'SPECIAL MODE: ACCESSIBILITY PERSONA TESTING (WCAG 2.1 AA/AAA) - Focus strictly on contrast, touch targets, and hierarchy.' : ''}
-      
-      OBJECTIVE:
-      Generate a brutally honest, data-driven, and visually-oriented strategic audit.
-      Your goal is not to be nice, but to highlight exactly why this design might fail to convert or delight.
-      
-      YOU MUST RETURN JSON ONLY. NO MARKDOWN.
-      
-      ### CORE REQUIREMENT: TWO-TIERED ANALYSIS
-      Your response must provide value at two different levels:
-      1. STRATEGIC (Executive): High-level gaps in trust, brand, flow, and business logic.
-      2. TACTICAL (Designer/Dev): Specific pixel-pushing fixes, color tweaks, and layout adjustments.
+    // Helper function to analyze a single image
+    const analyzeImage = async (img, imageIndex, totalImages) => {
+      const singleImagePrompt = `
+        You are a senior UX heuristic evaluator with 10+ years at top agencies (Baymard / Nielsen Norman Group level).
+        Analyze this SINGLE UI screenshot using **${framework === 'nielsen' ? "Jakob Nielsen's 10 Usability Heuristics" : framework === 'wcag' ? 'WCAG 2.1 AA/AAA Accessibility Guidelines' : 'Gestalt Principles of Visual Design'}**.
+        ${mode === 'accessibility' ? 'SPECIAL MODE: ACCESSIBILITY FOCUS - Prioritize contrast, touch targets, and visual hierarchy.' : ''}
+        
+        YOU MUST RETURN JSON ONLY. NO MARKDOWN.
+        
+        CRITICAL: You MUST find EXACTLY 4-5 distinct usability issues in this screenshot. 
+        Look for: Layout problems, Typography issues, Color/contrast, Interaction gaps, Content clarity, Navigation issues.
+        Each issue must reference a SPECIFIC visible element with exact location.
+        
+        ${framework === 'nielsen' ? `
+        Use Nielsen's 10 Heuristics:
+        1. Visibility of system status
+        2. Match between system and real world
+        3. User control and freedom
+        4. Consistency and standards
+        5. Error prevention
+        6. Recognition rather than recall
+        7. Flexibility and efficiency of use
+        8. Aesthetic and minimalist design
+        9. Help users recognize, diagnose, recover from errors
+        10. Help and documentation
+        ` : ''}
 
-      ### SCORING GUIDELINES
-      - < 50: Broken/Unusable
-      - 50-70: MVP/Average (Most sites fall here)
-      - 70-85: Good/Professional
-      - 85-95: World-Class (Apple/Stripe level)
-      - 96-100: Flawless (Rare)
-      *Do not inflate scores. Be critical.*
+        JSON SCHEMA (return EXACTLY this structure):
+        {
+          "ui_title": "Brief title for this page/section",
+          "score": 0-100,
+          "ux_metrics": {
+            "clarity": 0-10,
+            "efficiency": 0-10,
+            "consistency": 0-10,
+            "aesthetics": 0-10,
+            "accessibility": 0-10
+          },
+          "audit": [
+            {
+              "title": "Issue 1 title",
+              "issue": "Exact problem description with specific screen location",
+              "severity": "critical|high|medium|low",
+              "category": "Layout|Typography|Color|Interaction|Content|Navigation",
+              "heuristic": "Nielsen #X: Heuristic Name",
+              "impact": "~XX% of users affected",
+              "coordinates": "35,70",
+              "solution": "Specific CSS or code fix"
+            },
+            {
+              "title": "Issue 2 title",
+              "issue": "Different problem...",
+              "severity": "medium",
+              "category": "Typography",
+              "heuristic": "Nielsen #4: Consistency",
+              "impact": "~XX% of users...",
+              "coordinates": "75,25",
+              "solution": "Fix..."
+            },
+            {
+              "title": "Issue 3 title",
+              "issue": "Another problem...",
+              "severity": "low",
+              "category": "Color",
+              "heuristic": "Nielsen #8: Aesthetic",
+              "impact": "~XX% of users...",
+              "coordinates": "50,55",
+              "solution": "Fix..."
+            },
+            {
+              "title": "Issue 4 title",
+              "issue": "Fourth problem...",
+              "severity": "medium",
+              "category": "Interaction",
+              "heuristic": "Nielsen #1: Visibility",
+              "impact": "~XX% of users...",
+              "coordinates": "20,80",
+              "solution": "Fix..."
+            }
+          ],
+          "key_strengths": ["Strength 1", "Strength 2"],
+          "key_weaknesses": ["Weakness 1", "Weakness 2"]
+        }
 
-      JSON SCHEMA:
-      {
-        "score": 0-100,
-        "summary_title": "Punchy, 3-5 word Strategic Headline",
-        "summary_text": "A direct, no-fluff executive summary (2 sentences). Focus on the 'Why', not the 'What'.",
-        "strategic_audit": [
-          {
-            "title": "Strategic Priority",
-            "issue": "High-level strategic gap (e.g. 'Low Trust Signals', 'Confusing Value Prop', 'Friction-Heavy Funnel').",
-            "solution": "Strategic Recommendation (e.g. 'Implement social proof above the fold', 'Simplify sign-up flow to 2 steps')."
-          }
-        ],
-        "ux_metrics": {
-           "clarity": 0-10,
-           "efficiency": 0-10,
-           "consistency": 0-10,
-           "aesthetics": 0-10,
-           "accessibility": 0-10
-        },
-        "key_strengths": ["Strength 1 (Be specific)", "Strength 2", "Strength 3"],
-        "key_weaknesses": ["Critical Weakness 1", "Weakness 2", "Weakness 3"],
-        "images": [
-          {
-            "index": 0,
-            "ui_title": "Section/Page Name",
-            "audit": [
-              {
-                "title": "UI/UX Finding",
-                "issue": "Specific problem. Mention colors, pixels, or alignment. (e.g. 'Primary button contrast is 3:1 (fail)', 'Headline hierarchy weak').",
-                "severity": "critical" | "high" | "medium" | "low",
-                "category": "Layout" | "Typography" | "Color" | "Interaction" | "Content",
-                "coordinates": "x,y (0-100 scale, e.g. '50,50' for center). ESTIMATE VISUAL LOCATION.",
-                "solution": "Actionable fix. Suggest Tailwind classes if applicable (e.g. 'Use text-lg font-bold', 'Add gap-4')."
-              }
-            ]
-          }
-        ]
-      }
+        RULES:
+        1. Return EXACTLY 4-5 audit findings. No fewer. This is mandatory.
+        2. Each finding must have unique title, category, and heuristic.
+        3. Coordinates MUST be two numbers (0-100) separated by comma, like "35,70" or "85,15". The first number is X position (0=left edge, 100=right edge). The second is Y position (0=top, 100=bottom). Point to where the problem is visible.
+        4. Do NOT put impact % in the issue field - only in impact field.
+      `;
 
-      CRITICAL RESTRICTIONS:
-      1. **Strategic != Tactical**. 'strategic_audit' must NOT contain CSS fixes. 'images[].audit' must NOT contain business advice.
-      2. **Specific Severity**. Use 'critical' ONLY for blockers or major trust killers. Use 'low' for nitpicks.
-      3. **No Hallucinations**. If text is unreadable, state that. Do not invent accessibility features you cannot see.
-    `;
-
-    let result;
-    try {
-      result = await groq.chat.completions.create({
+      const result = await groq.chat.completions.create({
         model: GROQ_MODEL,
         messages: [
           {
             role: "user",
             content: [
-              { type: "text", text: promptText },
-              ...images.map(img => ({
-                type: "image_url",
-                image_url: { url: `data:${img.mimeType};base64,${img.base64}` }
-              }))
+              { type: "text", text: singleImagePrompt },
+              { type: "image_url", image_url: { url: `data:${img.mimeType};base64,${img.base64}` } }
             ]
           }
         ],
         response_format: { type: "json_object" },
         temperature: 0.7
       });
+
+      const responseText = result.choices[0]?.message?.content || "{}";
+      return JSON.parse(responseText);
+    };
+
+    // Process all images in batch (one at a time for focused analysis)
+    let allImageResults = [];
+    let overallScore = 0;
+    let globalStrengths = [];
+    let globalWeaknesses = [];
+    let globalMetrics = { clarity: 0, efficiency: 0, consistency: 0, aesthetics: 0, accessibility: 0 };
+    let strategicAudit = [];
+
+    try {
+      for (let i = 0; i < images.length; i++) {
+        const imgResult = await analyzeImage(images[i], i, images.length);
+        allImageResults.push({
+          index: i,
+          ui_title: imgResult.ui_title || `Screenshot ${i + 1}`,
+          ux_metrics: imgResult.ux_metrics || { clarity: 5, efficiency: 5, consistency: 5, aesthetics: 5, accessibility: 5 },
+          audit: (imgResult.audit || []).map(item => ({
+            title: item.title || "Issue Detected",
+            issue: item.issue || "No description",
+            solution: item.solution || "No solution",
+            severity: item.severity || "medium",
+            category: item.category || "General",
+            heuristic: item.heuristic || null,
+            impact: item.impact || null,
+            coordinates: item.coordinates || null
+          }))
+        });
+
+        overallScore += (imgResult.score || 70);
+        globalStrengths.push(...(imgResult.key_strengths || []));
+        globalWeaknesses.push(...(imgResult.key_weaknesses || []));
+
+        const m = imgResult.ux_metrics || {};
+        globalMetrics.clarity += (m.clarity || 5);
+        globalMetrics.efficiency += (m.efficiency || 5);
+        globalMetrics.consistency += (m.consistency || 5);
+        globalMetrics.aesthetics += (m.aesthetics || 5);
+        globalMetrics.accessibility += (m.accessibility || 5);
+      }
+
+      // Average the scores and metrics
+      const imgCount = images.length || 1;
+      overallScore = Math.round(overallScore / imgCount);
+      globalMetrics.clarity = Math.round(globalMetrics.clarity / imgCount);
+      globalMetrics.efficiency = Math.round(globalMetrics.efficiency / imgCount);
+      globalMetrics.consistency = Math.round(globalMetrics.consistency / imgCount);
+      globalMetrics.aesthetics = Math.round(globalMetrics.aesthetics / imgCount);
+      globalMetrics.accessibility = Math.round(globalMetrics.accessibility / imgCount);
+
     } catch (modelErr) {
       return NextResponse.json({
         error: "Model inference failed",
@@ -323,29 +391,22 @@ export async function POST(req) {
       }, { status: modelErr.status || 500 });
     }
 
-    const responseText = result.choices[0]?.message?.content || "";
-    let parsedData;
-    try {
-      parsedData = JSON.parse(responseText);
-    } catch (parseErr) {
-      return NextResponse.json({ error: "Model returned invalid JSON" }, { status: 502 });
-    }
+    // Combine all audits for legacy compatibility
+    const normalizedAudit = allImageResults.flatMap(img => img.audit);
+    const normalizedImages = allImageResults;
 
-    // Process and Normalize Audit Data
-    const detailedAudits = Array.isArray(parsedData?.images)
-      ? parsedData.images.flatMap(img => img.audit || [])
-      : [];
-
-    const normalizedAudit = detailedAudits.map(item => ({
-      title: item.title || "Issue Detected",
-      issue: item.issue || "No description provided",
-      solution: item.solution || "No solution provided",
-      severity: item.severity || "medium",
-      category: item.category || "General",
-      coordinates: item.coordinates || null
-    }));
-
-    const strategicAudit = (parsedData.strategic_audit || []).map((item) => ({
+    // Create summary from first image or aggregate
+    const parsedData = {
+      score: overallScore,
+      summary_title: allImageResults[0]?.ui_title || "UI Audit",
+      summary_text: `Analyzed ${images.length} screenshot(s) with ${normalizedAudit.length} total findings.`,
+      ux_metrics: globalMetrics,
+      key_strengths: [...new Set(globalStrengths)].slice(0, 3),
+      key_weaknesses: [...new Set(globalWeaknesses)].slice(0, 3),
+      images: normalizedImages
+    };
+    // strategicAudit for legacy support (not used in new batch processing but needed for summary)
+    const strategicAuditList = (parsedData.strategic_audit || []).map((item) => ({
       title: item.title || "Strategic Insight",
       issue: item.issue || "Observation",
       solution: item.solution || "Recommendation"
@@ -379,11 +440,12 @@ export async function POST(req) {
       success: true,
       id: savedId,
       ui_title: uiTitle,
-      audit: normalizedAudit, // Detailed Findings
+      audit: normalizedAudit, // Detailed Findings (all combined)
+      images: normalizedImages, // Per-image audits for multi-image navigation
       summary: {
         summary_text: parsedData.summary_text || "",
         ui_title: uiTitle,
-        audit: strategicAudit // Use the actual strategic insights from AI
+        audit: strategicAuditList // Use the actual strategic insights from AI
       },
       score: parsedData.score || 0,
       ux_metrics: parsedData.ux_metrics || {},

@@ -2,11 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-provider";
-import { Plus, Trash2, BarChart3, Loader, Download, LayoutDashboard, GitCompare, Sparkles } from "lucide-react";
+import { Plus, Trash2, BarChart3, Loader, Download, LayoutDashboard, GitCompare, Sparkles, Trophy, TrendingUp, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { ThemeToggle } from "@/components/theme-toggle";
+import dynamic from "next/dynamic";
+
+// Dynamically import Recharts to avoid SSR issues
+const RadarChart = dynamic(() => import('recharts').then(mod => mod.RadarChart), { ssr: false });
+const Radar = dynamic(() => import('recharts').then(mod => mod.Radar), { ssr: false });
+const PolarGrid = dynamic(() => import('recharts').then(mod => mod.PolarGrid), { ssr: false });
+const PolarAngleAxis = dynamic(() => import('recharts').then(mod => mod.PolarAngleAxis), { ssr: false });
+const PolarRadiusAxis = dynamic(() => import('recharts').then(mod => mod.PolarRadiusAxis), { ssr: false });
+const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false });
+const Legend = dynamic(() => import('recharts').then(mod => mod.Legend), { ssr: false });
 
 interface Competitor {
     id: string;
@@ -233,7 +243,101 @@ export default function ComparePageClient() {
 
             doc.setFontSize(14);
             doc.setTextColor(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b);
-            doc.text("High-Level Comparison", 20, 130);
+            doc.text("UX Score Comparison", 20, 125);
+
+            // Score Cards Row
+            const allSites = [
+                { name: yourSite.name, analysis: yourSite.analysis, isYours: true },
+                ...competitors.map(c => ({ name: c.name, analysis: c.analysis, isYours: false }))
+            ];
+            const maxScore = Math.max(...allSites.map(s => s.analysis?.score || 0));
+            let scoreX = 20;
+            const scoreCardWidth = (pageWidth - 40 - (allSites.length - 1) * 5) / allSites.length;
+
+            allSites.forEach((site) => {
+                const score = site.analysis?.score || 0;
+                const scoreColor = score >= 80 ? [16, 185, 129] : score >= 60 ? [245, 158, 11] : [239, 68, 68];
+                const isWinner = score === maxScore && score > 0;
+
+                doc.setFillColor(CARD.r, CARD.g, CARD.b);
+                roundedRect(scoreX, 130, scoreCardWidth, 35);
+
+                // Winner badge
+                if (isWinner) {
+                    doc.setFillColor(245, 158, 11);
+                    doc.roundedRect(scoreX + scoreCardWidth - 25, 132, 22, 8, 2, 2, "F");
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(6);
+                    doc.setFont("helvetica", "bold");
+                    doc.text("WINNER", scoreX + scoreCardWidth - 14, 137, { align: "center" });
+                }
+
+                // Site name
+                doc.setFontSize(8);
+                doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
+                doc.setFont("helvetica", "normal");
+                const siteName = site.name.substring(0, 12) + (site.name.length > 12 ? '...' : '');
+                doc.text((site.isYours ? "★ " : "") + siteName, scoreX + 5, 138);
+
+                // Score
+                doc.setFontSize(20);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(scoreColor[0], scoreColor[1], scoreColor[2]);
+                doc.text(score.toString(), scoreX + 5, 155);
+
+                // /100 label
+                doc.setFontSize(8);
+                doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
+                doc.text("/100", scoreX + 25, 155);
+
+                scoreX += scoreCardWidth + 5;
+            });
+
+            // High-Level Comparison Title
+            doc.setFontSize(14);
+            doc.setTextColor(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b);
+            doc.text("UX Metrics Breakdown", 20, 180);
+
+            // Metrics Table
+            const metricsTableData: any[] = [["METRIC", yourSite.name, ...competitors.map((c) => c.name)]];
+            const metricKeys = ['clarity', 'efficiency', 'consistency', 'aesthetics', 'accessibility'];
+            metricKeys.forEach(key => {
+                const yourVal = Math.round((yourSite.analysis?.ux_metrics?.[key] || 0) * 10);
+                const compVals = competitors.map(c => Math.round((c.analysis?.ux_metrics?.[key] || 0) * 10));
+                metricsTableData.push([key.charAt(0).toUpperCase() + key.slice(1), yourVal, ...compVals]);
+            });
+
+            autoTable(doc, {
+                head: [metricsTableData[0]],
+                body: metricsTableData.slice(1),
+                startY: 185,
+                theme: "grid",
+                headStyles: {
+                    fillColor: [CARD.r, CARD.g, CARD.b],
+                    textColor: [ACCENT.r, ACCENT.g, ACCENT.b],
+                    fontStyle: "bold",
+                    lineWidth: 0
+                },
+                bodyStyles: {
+                    fillColor: [BG.r, BG.g, BG.b],
+                    textColor: [TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b],
+                    lineWidth: 0.1,
+                    lineColor: [STROKE.r, STROKE.g, STROKE.b]
+                },
+                alternateRowStyles: { fillColor: [BG.r, BG.g, BG.b] },
+                styles: { fontSize: 9, cellPadding: 5 },
+                margin: { left: 20, right: 20 },
+            });
+
+            // Add page for Issues Comparison
+            doc.addPage();
+            doc.setFillColor(BG.r, BG.g, BG.b);
+            doc.rect(0, 0, pageWidth, pageHeight, "F");
+
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b);
+            doc.text("Issues Breakdown", 20, 20);
 
             const summaryData: any[] = [["METRIC", yourSite.name, ...competitors.map((c) => c.name)]];
             const yourMetrics = calculateMetrics(yourSite.analysis);
@@ -242,11 +346,13 @@ export default function ComparePageClient() {
             summaryData.push(["Total Issues", yourMetrics.total, ...compMetrics.map(m => m.total)]);
             summaryData.push(["Critical", yourMetrics.critical, ...compMetrics.map(m => m.critical)]);
             summaryData.push(["High", yourMetrics.high, ...compMetrics.map(m => m.high)]);
+            summaryData.push(["Medium", yourMetrics.medium, ...compMetrics.map(m => m.medium)]);
+            summaryData.push(["Low", yourMetrics.low, ...compMetrics.map(m => m.low)]);
 
             autoTable(doc, {
                 head: [summaryData[0]],
                 body: summaryData.slice(1),
-                startY: 140,
+                startY: 30,
                 theme: "grid",
                 headStyles: {
                     fillColor: [CARD.r, CARD.g, CARD.b],
@@ -611,6 +717,110 @@ export default function ComparePageClient() {
                                 <Download className="w-4 h-4" />
                                 Export Benchmark Report
                             </button>
+                        </div>
+
+                        {/* UX Score Comparison Cards */}
+                        <div className="mb-12">
+                            <h3 className="text-lg font-bold mb-6 text-muted-text flex items-center gap-2">
+                                <Trophy className="w-5 h-5 text-amber-500" />
+                                UX Score Comparison
+                            </h3>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {[
+                                    { name: yourSite.name, analysis: yourSite.analysis, isYours: true },
+                                    ...competitors.map(c => ({ name: c.name, analysis: c.analysis, isYours: false }))
+                                ].map((site, idx) => {
+                                    const score = site.analysis?.score || 0;
+                                    const scoreColor = score >= 80
+                                        ? "from-emerald-500 to-emerald-600"
+                                        : score >= 60
+                                            ? "from-amber-500 to-amber-600"
+                                            : "from-red-500 to-red-600";
+                                    const bgColor = score >= 80
+                                        ? "bg-emerald-500/10 border-emerald-500/30"
+                                        : score >= 60
+                                            ? "bg-amber-500/10 border-amber-500/30"
+                                            : "bg-red-500/10 border-red-500/30";
+
+                                    // Find winner (highest score)
+                                    const allScores = [yourSite.analysis?.score || 0, ...competitors.map(c => c.analysis?.score || 0)];
+                                    const maxScore = Math.max(...allScores);
+                                    const isWinner = score === maxScore && score > 0;
+
+                                    return (
+                                        <div
+                                            key={idx}
+                                            className={`relative p-6 rounded-2xl border ${bgColor} ${site.isYours ? 'ring-2 ring-accent-primary' : ''}`}
+                                        >
+                                            {isWinner && (
+                                                <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                                                    <Trophy className="w-3 h-3" /> Winner
+                                                </div>
+                                            )}
+                                            <p className="text-xs font-bold text-muted-text mb-2 uppercase tracking-wider truncate">
+                                                {site.isYours && "⭐ "}{site.name}
+                                            </p>
+                                            <p className={`text-4xl font-black bg-gradient-to-r ${scoreColor} bg-clip-text text-transparent`}>
+                                                {score}
+                                            </p>
+                                            <p className="text-[10px] text-muted-text mt-1">OUT OF 100</p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Radar Chart Comparison */}
+                        <div className="mb-12">
+                            <h3 className="text-lg font-bold mb-6 text-muted-text flex items-center gap-2">
+                                <TrendingUp className="w-5 h-5 text-accent-primary" />
+                                UX Metrics Comparison
+                            </h3>
+                            <div className="bg-foreground/[0.02] border border-border-dim rounded-xl p-6">
+                                <ResponsiveContainer width="100%" height={350}>
+                                    <RadarChart
+                                        data={(() => {
+                                            const yourMetricsData = yourSite.analysis?.ux_metrics || {};
+                                            const metricKeys = ['clarity', 'efficiency', 'consistency', 'aesthetics', 'accessibility'];
+                                            return metricKeys.map(key => ({
+                                                subject: key.charAt(0).toUpperCase() + key.slice(1),
+                                                [yourSite.name]: (yourMetricsData[key] || 0) * 10,
+                                                ...Object.fromEntries(competitors.map(c => [
+                                                    c.name,
+                                                    ((c.analysis?.ux_metrics?.[key] || 0) * 10)
+                                                ]))
+                                            }));
+                                        })()}
+                                    >
+                                        <PolarGrid stroke="#3b3f5c" strokeOpacity={0.5} />
+                                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 500 }} />
+                                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
+                                        <Radar
+                                            name={yourSite.name}
+                                            dataKey={yourSite.name}
+                                            stroke="#6366f1"
+                                            fill="#6366f1"
+                                            fillOpacity={0.3}
+                                            strokeWidth={2}
+                                        />
+                                        {competitors.map((comp, idx) => {
+                                            const colors = ['#f97316', '#10b981', '#ec4899'];
+                                            return (
+                                                <Radar
+                                                    key={comp.id}
+                                                    name={comp.name}
+                                                    dataKey={comp.name}
+                                                    stroke={colors[idx % colors.length]}
+                                                    fill={colors[idx % colors.length]}
+                                                    fillOpacity={0.2}
+                                                    strokeWidth={2}
+                                                />
+                                            );
+                                        })}
+                                        <Legend />
+                                    </RadarChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
 
                         {/* Summary Table */}
