@@ -146,7 +146,53 @@ function DashboardContent() {
     }
 
     Promise.all([fetchUsage(), fetchCloudHistory()]);
+    Promise.all([fetchUsage(), fetchCloudHistory()]);
   }, [isSignedIn, user, searchParams]);
+
+
+  // PAYPAL RETURN HANDLER
+  useEffect(() => {
+    const paymentStatus = searchParams.get("payment");
+    const token = searchParams.get("token"); // PayPal Order ID
+    const payerId = searchParams.get("PayerID");
+
+    if (paymentStatus === "success" && token && payerId) {
+      // 1. Show verifying UI
+      setLoading(true);
+      setLoadingMessage("Verifying PayPal Payment...");
+
+      // 2. Call Verify API
+      const verifyPayment = async () => {
+        try {
+          const res = await fetch("/api/payment/verify-paypal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orderID: token }),
+          });
+
+          const data = await res.json();
+
+          if (data.success || data.plan) {
+            alert("Payment Verified! Your plan has been upgraded.");
+            window.location.href = "/dashboard"; // Clear query params & refresh state
+          } else {
+            alert(data.error || "Verification failed. Please contact support.");
+            setLoading(false);
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Error verifying payment.");
+          setLoading(false);
+        }
+      };
+
+      verifyPayment();
+    } else if (paymentStatus === "cancelled") {
+      alert("Payment was cancelled.");
+      // Ideally remove query param
+      window.history.replaceState(null, "", "/dashboard");
+    }
+  }, [searchParams]);
 
 
   const handleUpgrade = (planId: string) => {
