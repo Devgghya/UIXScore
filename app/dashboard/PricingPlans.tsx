@@ -171,33 +171,6 @@ export function PricingPlans({
             return;
         }
 
-        // Handle non-Indian region payments with PayPal (respect admin override)
-        if (displayRegion === "GLOBAL") {
-            setLoadingPlan(planId);
-            try {
-                const res = await fetch("/api/payment/paypal-checkout", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ planId }),
-                });
-
-                if (!res.ok) {
-                    const data = await res.json();
-                    throw new Error(data.details || data.error || "Failed to create PayPal checkout");
-                }
-
-                const { approvalUrl } = await res.json();
-                window.location.href = approvalUrl;
-            } catch (error: any) {
-                console.error(error);
-                alert(`PayPal checkout failed: ${error.message}`);
-                setLoadingPlan(null);
-            }
-            return;
-        }
-
-
-
         if (!window.Razorpay) {
             alert("Razorpay SDK failed to load. Please check your internet connection.");
             return;
@@ -211,6 +184,7 @@ export function PricingPlans({
         setLoadingPlan(planId);
         try {
             // 1. Create Order
+            // Pass the displayRegion currency. If GLOBAL, it will use USD (one-time). If IN, INR (subscription).
             const res = await fetch("/api/payment/create-order", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -524,7 +498,7 @@ export function PricingPlans({
                 <div className="h-[1px] w-12 bg-border-dim"></div>
                 <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-text flex items-center gap-2">
                     <CreditCard className="w-3 h-3" />
-                    {displayRegion === "IN" ? "Securely processed by Razorpay" : "Securely processed by PayPal"}
+                    {displayRegion === "IN" ? "Securely processed by Razorpay" : "Securely processed by Razorpay (International)"}
                 </p>
                 <div className="h-[1px] w-12 bg-border-dim"></div>
             </div>
@@ -591,7 +565,7 @@ export function PricingPlans({
                                 <p className="text-muted-text text-sm mb-6">
                                     {displayRegion === "IN"
                                         ? "We're securely initializing your session with Razorpay. Please do not refresh."
-                                        : "We're securely initializing your session with PayPal. Please do not refresh."
+                                        : "We're securely initializing your session with Razorpay. Please do not refresh."
                                     }
                                 </p>
                                 <div className="flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-text">
