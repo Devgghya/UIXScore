@@ -123,51 +123,23 @@ export default function AdminPage() {
     const handleIpClick = async (ip: string) => {
         if (!ip) return;
 
-        // Check for local/private IPs that can't be geolocated
-        const privateIpPatterns = ['127.0.0.1', 'localhost', '::1', '192.168.', '10.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.'];
-        const isPrivateIp = privateIpPatterns.some(pattern => ip.startsWith(pattern) || ip === pattern);
-
-        if (isPrivateIp) {
-            setIpModalOpen(true);
-            setIpLoading(false);
-            setIpDetails({ error: true, message: "This is a local/private IP address and cannot be geolocated.", ip });
-            return;
-        }
-
+        // Reset state
         setIpModalOpen(true);
         setIpLoading(true);
         setIpDetails(null);
 
         try {
-            // Try ip-api.com first (more reliable, 45 requests/min free)
-            const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,country,regionName,city,zip,lat,lon,isp,org,as,query`);
+            const response = await fetch(`/api/admin/ip-lookup?ip=${ip}`);
             const data = await response.json();
 
-            if (data.status === 'success') {
-                setIpDetails({
-                    ip: data.query,
-                    city: data.city,
-                    region: data.regionName,
-                    country: data.country,
-                    postal: data.zip,
-                    latitude: data.lat,
-                    longitude: data.lon,
-                    org: data.org || data.isp,
-                    asn: data.as
-                });
+            if (data.error) {
+                setIpDetails({ error: true, message: data.message || "Failed to locate IP", ip });
             } else {
-                // Fallback to ipapi.co
-                const fallbackRes = await fetch(`https://ipapi.co/${ip}/json/`);
-                const fallbackData = await fallbackRes.json();
-                if (fallbackData.error) {
-                    setIpDetails({ error: true, message: fallbackData.reason || "Unable to locate IP", ip });
-                } else {
-                    setIpDetails(fallbackData);
-                }
+                setIpDetails(data);
             }
         } catch (err) {
             console.error("IP Fetch Error", err);
-            setIpDetails({ error: true, message: "Failed to fetch IP location. Service may be unavailable.", ip });
+            setIpDetails({ error: true, message: "Failed to fetch IP location.", ip });
         } finally {
             setIpLoading(false);
         }
@@ -1333,6 +1305,12 @@ export default function AdminPage() {
                                     <div className="flex flex-col items-center justify-center py-8 gap-3">
                                         <Loader2 className="w-8 h-8 animate-spin text-accent-primary" />
                                         <span className="text-xs font-bold text-muted-text uppercase tracking-wider">Locating Signal...</span>
+                                    </div>
+                                ) : ipDetails?.error ? (
+                                    <div className="text-center py-8 text-muted-text">
+                                        <p className="text-red-400 font-bold mb-2">Location Lookup Failed</p>
+                                        <p className="text-xs">{ipDetails.message}</p>
+                                        <p className="mt-4 font-mono text-xs bg-foreground/10 inline-block px-2 py-1 rounded">{ipDetails.ip}</p>
                                     </div>
                                 ) : ipDetails ? (
                                     <div className="space-y-4">
