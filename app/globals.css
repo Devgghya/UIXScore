@@ -1,30 +1,37 @@
+/* ── Google Fonts: Inter (modern, geometric sans-serif) ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 html {
   scroll-behavior: smooth;
 }
 
+/* ── Light Theme Tokens ── */
 :root {
   --color-background: #f8fafc;
   --color-foreground: #020617;
   --color-card: #ffffff;
   --color-border-dim: #e2e8f0;
   --color-muted-text: #475569;
-  --color-accent-primary: #4f46e5;
+  --color-accent-primary: #6366f1;
+  --color-accent-glow: rgba(99, 102, 241, 0.15);
   color-scheme: light;
 }
 
+/* ── Dark Theme Tokens — deeper, richer palette ── */
 [data-theme='dark'],
 .dark {
-  --color-background: #0a0a0a;
-  --color-foreground: #f8fafc;
-  --color-card: #121214;
-  --color-border-dim: #1e293b;
-  --color-muted-text: #94a3b8;
+  --color-background: #050507;
+  --color-foreground: #f1f5f9;
+  --color-card: #0d0d12;
+  --color-border-dim: #1a1a2e;
+  --color-muted-text: #8892b0;
   --color-accent-primary: #818cf8;
+  --color-accent-glow: rgba(129, 140, 248, 0.12);
   color-scheme: dark;
 }
 
+/* ── Tailwind v4 @theme bridge ── */
 @theme {
   --color-background: var(--color-background);
   --color-foreground: var(--color-foreground);
@@ -32,11 +39,211 @@ html {
   --color-border-dim: var(--color-border-dim);
   --color-muted-text: var(--color-muted-text);
   --color-accent-primary: var(--color-accent-primary);
+  --color-accent-glow: var(--color-accent-glow);
 }
 
+/* ── Base body styles ── */
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Typography scale (responsive via clamp) ── */
+.text-display {
+  font-size: clamp(2.75rem, 6vw, 5.5rem);
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  font-weight: 900;
+}
+
+.text-h2 {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-weight: 900;
+}
+
+.text-h3 {
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  font-weight: 700;
+}
+
+.text-body-lg {
+  font-size: clamp(1.05rem, 1.5vw, 1.35rem);
+  line-height: 1.7;
+  font-weight: 400;
+}
+
+/* ── Keyframe animations ── */
+
+/* Button shine sweep */
+@keyframes shine {
+  0% {
+    transform: skewX(-12deg) translateX(-200%);
+  }
+
+  100% {
+    transform: skewX(-12deg) translateX(200%);
+  }
+}
+
+/* Gentle float for decorative elements */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-20px) rotate(2deg);
+  }
+}
+
+@keyframes float-reverse {
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(20px) rotate(-2deg);
+  }
+}
+
+/* Ambient glow pulse */
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+/* Subtle scale-in for section entries */
+@keyframes fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Shine animation utility ── */
+.group-hover\:animate-shine {
+  animation: none;
+}
+
+.group:hover .group-hover\:animate-shine {
+  animation: shine 0.8s ease-in-out;
+}
+
+/* Float utilities */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 7s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: float 8s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+/* ── Scrollbar styling (dark theme) ── */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-dim);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-text);
+}
+
+/* ── Focus-visible for keyboard accessibility ── */
+*:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove focus outline on mouse click */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── Utility: gradient text ── */
+.gradient-text {
+  background: linear-gradient(180deg, var(--color-foreground) 0%, var(--color-foreground) 50%, var(--color-muted-text) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Grid background pattern for hero ── */
+.hero-grid-pattern {
+  background-image:
+    linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+.dark .hero-grid-pattern {
+  background-image:
+    linear-gradient(rgba(99, 102, 241, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.06) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ── Card gradient top-border accent ── */
+.card-accent-border::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-accent-primary), transparent);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.card-accent-border:hover::before {
+  opacity: 1;
+}
+
+/* ── Section divider gradient ── */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-border-dim), transparent);
 }
