@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Sparkles, CreditCard, Shield, Zap, Rocket, Loader2, Coffee, Lock, X, User, ArrowRight } from "lucide-react";
+import { Check, Sparkles, CreditCard, Shield, Zap, Rocket, Loader2, Coffee, Lock, X, User, ArrowRight, Ticket } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -103,6 +103,20 @@ export function PricingPlans({
     const [region, setRegion] = useState<"IN" | "GLOBAL">("GLOBAL");
     const [currencyOverride, setCurrencyOverride] = useState<"IN" | "GLOBAL" | null>(null);
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+    const [promoInput, setPromoInput] = useState("");
+    const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
+    const [showPromoInput, setShowPromoInput] = useState(false);
+    const [promoError, setPromoError] = useState("");
+
+    const handleApplyPromo = () => {
+        if (promoInput.trim().toUpperCase() === "GOODDAY") {
+            setAppliedPromo("GOODDAY");
+            setPromoError("");
+            setShowPromoInput(false);
+        } else {
+            setPromoError("Invalid promo code");
+        }
+    };
 
     // Effective region for pricing display (admin can override)
     const displayRegion = isAdmin && currencyOverride ? currencyOverride : region;
@@ -213,7 +227,12 @@ export function PricingPlans({
             const res = await fetch("/api/payment/create-order", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ planId, billingCycle, currency: displayRegion === "IN" ? "INR" : "USD" }),
+                body: JSON.stringify({
+                    planId,
+                    billingCycle,
+                    currency: displayRegion === "IN" ? "INR" : "USD",
+                    promoCode: appliedPromo
+                }),
             });
 
             if (!res.ok) {
@@ -340,6 +359,55 @@ export function PricingPlans({
                     )}
 
                 </div>
+
+                {/* Promo Code UI */}
+                <div className="mt-6 flex flex-col items-center">
+                    {!appliedPromo ? (
+                        <>
+                            {!showPromoInput ? (
+                                <button
+                                    onClick={() => setShowPromoInput(true)}
+                                    className="text-xs font-bold text-muted-text hover:text-indigo-500 transition-colors underline decoration-dotted underline-offset-4"
+                                >
+                                    Have a promocode?
+                                </button>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            placeholder="Enter code"
+                                            value={promoInput}
+                                            onChange={(e) => setPromoInput(e.target.value)}
+                                            className={`px-3 py-1.5 bg-card border ${promoError ? 'border-red-500' : 'border-border-dim'} rounded-lg text-xs font-bold focus:outline-none focus:border-indigo-500 transition-all uppercase`}
+                                        />
+                                        {promoError && <p className="absolute -bottom-4 left-0 text-[10px] text-red-500 font-bold">{promoError}</p>}
+                                    </div>
+                                    <button
+                                        onClick={handleApplyPromo}
+                                        className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-500 transition-all"
+                                    >
+                                        Apply
+                                    </button>
+                                    <button
+                                        onClick={() => setShowPromoInput(false)}
+                                        className="p-1.5 text-muted-text hover:text-foreground transition-all"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-bold">
+                            <Ticket className="w-3.5 h-3.5" />
+                            Promo Applied: {appliedPromo}
+                            <button onClick={() => setAppliedPromo(null)} className="ml-1 hover:text-red-500 transition-colors">
+                                <X className="w-3 h-3" />
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* 🎯 HERO BANNER - Unlimited Audits for Free */}
@@ -406,8 +474,10 @@ export function PricingPlans({
                             }`}
                     >
                         {plan.recommended && (
-                            <div className="absolute -top-3 md:-top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-3 md:px-4 py-1 rounded-full text-[10px] md:text-xs font-black uppercase tracking-widest shadow-lg">
-                                Most Popular
+                            <div className="absolute -top-3 md:-top-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 z-20">
+                                <div className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-3 md:px-4 py-1 rounded-full text-[10px] md:text-xs font-black uppercase tracking-widest shadow-lg whitespace-nowrap">
+                                    Most Popular
+                                </div>
                             </div>
                         )}
 
@@ -427,12 +497,16 @@ export function PricingPlans({
                             <span className="text-4xl font-black text-foreground">
                                 {plan.id === "enterprise" ? "Contact" : displayRegion === "IN" ? (
                                     billingCycle === "annual" && plan.id !== "free"
-                                        ? `₹${(parseInt(plan.priceInr.replace("₹", "")) * 0.8).toFixed(0)}`
-                                        : plan.priceInr
+                                        ? `₹${(parseInt(plan.priceInr.replace("₹", "")) * 0.8 * (appliedPromo === "GOODDAY" ? 0.8 : 1)).toFixed(0)}`
+                                        : appliedPromo === "GOODDAY" && plan.id !== "free"
+                                            ? `₹${(parseInt(plan.priceInr.replace("₹", "")) * 0.8).toFixed(0)}`
+                                            : plan.priceInr
                                 ) : (
                                     billingCycle === "annual" && plan.id !== "free"
-                                        ? `$${(parseInt(plan.price.replace("$", "")) * 0.8).toFixed(0)}`
-                                        : plan.price
+                                        ? `$${(parseInt(plan.price.replace("$", "")) * 0.8 * (appliedPromo === "GOODDAY" ? 0.8 : 1)).toFixed(0)}`
+                                        : appliedPromo === "GOODDAY" && plan.id !== "free"
+                                            ? `$${(parseInt(plan.price.replace("$", "")) * 0.8).toFixed(0)}`
+                                            : plan.price
                                 )}
                             </span>
                             {plan.period && (
@@ -444,8 +518,8 @@ export function PricingPlans({
                                         <span className="text-[10px] text-accent-primary font-bold mt-1 uppercase tracking-tighter">
                                             Billed {displayRegion === "IN" ? "₹" : "$"}{
                                                 displayRegion === "IN"
-                                                    ? (parseInt(plan.priceInr.replace("₹", "")) * 12 * 0.8).toFixed(0)
-                                                    : (parseInt(plan.price.replace("$", "")) * 12 * 0.8).toFixed(0)
+                                                    ? (parseInt(plan.priceInr.replace("₹", "")) * 12 * 0.8 * (appliedPromo === "GOODDAY" ? 0.8 : 1)).toFixed(0)
+                                                    : (parseInt(plan.price.replace("$", "")) * 12 * 0.8 * (appliedPromo === "GOODDAY" ? 0.8 : 1)).toFixed(0)
                                             }/yr
                                         </span>
                                     )}
