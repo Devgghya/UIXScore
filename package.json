@@ -28,7 +28,7 @@
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.562.0",
     "next": "16.1.4",
-    "next-mdx-remote": "^5.0.0",
+    "next-mdx-remote": "^6.0.0",
     "next-themes": "^0.4.6",
     "nodemailer": "^7.0.12",
     "razorpay": "^2.9.6",
